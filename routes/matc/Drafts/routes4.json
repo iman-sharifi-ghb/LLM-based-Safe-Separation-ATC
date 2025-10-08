@@ -1,0 +1,196 @@
+{
+  "waypoints": [
+    {
+      "name": "WP01",
+      "latitude": 33.13469,
+      "longitude": -97.80528
+    },
+    {
+      "name": "WP1",
+      "latitude": 33.13469,
+      "longitude": -97.49528
+    },
+    {
+      "name": "WP02",
+      "latitude": 32.65789,
+      "longitude": -97.82626
+    },
+    {
+      "name": "WP2",
+      "latitude": 32.65789,
+      "longitude": -97.52626
+    },
+    {
+      "name": "WP3",
+      "latitude": 32.90437,
+      "longitude": -97.15455
+    },
+    {
+      "name": "WP4",
+      "latitude": 33.73318,
+      "longitude": -96.80013
+    },
+    {
+      "name": "WP5",
+      "latitude": 32.92050,
+      "longitude": -96.80013
+    },
+    {
+      "name": "WP6",
+      "latitude": 32.06183,
+      "longitude": -96.80013
+    },
+    {
+      "name": "WP7",
+      "latitude": 32.90437,
+      "longitude": -96.43877
+    },
+    {
+      "name": "WP8",
+      "latitude": 33.15529,
+      "longitude": -96.08771
+    },
+    {
+      "name": "WP80",
+      "latitude": 33.15529,
+      "longitude": -95.78771
+    },
+    {
+      "name": "WP9",
+      "latitude": 32.62605,
+      "longitude": -96.09700
+    },
+    {
+      "name": "WP90",
+      "latitude": 32.62605,
+      "longitude": -95.79700
+    }
+  ],
+  "routes": [
+    {
+      "flight_prefix": ["AA", "AB", "AC", "AD"],
+      "aircraft": ["B737"],
+      "distribution": [
+        {
+          "name": "Monday",
+          "spawn": {
+            "type": "rv_discrete",
+            "parameters": {"values": [[3, 4, 5], [0.31, 0.4, 0.29]]}
+          },
+          "spacing": {
+            "type": "rv_discrete",
+            "parameters": {"values": [[120, 180, 240], [0.29, 0.4, 0.31]]}
+          },
+          "direction_forward_probability": 0.5,
+          "flight_prefix_probabilities": [0.25, 0.25, 0.25, 0.25],
+          "aircraft_probabilities": [1],
+          "path_probabilities": ["1/3", "1/3", "1/3"]
+        }
+      ],
+      "possible_paths": [
+        [
+          {
+            "name": "WP01",
+            "speed": 100,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP1",
+            "speed": 100,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP3",
+            "speed": 100,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP5",
+            "speed": 100,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP7",
+            "speed": 100,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP9",
+            "speed": 100,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP90",
+            "speed": 100,
+            "altitude": "FL150",
+            "end": true
+          }
+        ],
+        [
+          {
+            "name": "WP02",
+            "speed": 100,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP2",
+            "speed": 100,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP3",
+            "speed": 100,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP5",
+            "speed": 100,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP7",
+            "speed": 100,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP8",
+            "speed": 100,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP80",
+            "speed": 100,
+            "altitude": "FL150",
+            "end": true
+          }
+        ],
+        [
+          {
+            "name": "WP4",
+            "speed": 100,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP6",
+            "speed": 100,
+            "altitude": "FL150",
+            "end": true
+          }
+        ]
+      ]
+    }
+  ]
+}
