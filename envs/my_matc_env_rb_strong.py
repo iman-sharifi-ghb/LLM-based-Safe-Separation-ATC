@@ -16,7 +16,7 @@ from .scenario.utils import calculate_heading, metric_spd_to_knots_rounded
 from .scenario.scenario import ATCScenario
 from .scenario.utils import haversine_distance, normalize
 
-DELTA_T = 3.0
+DELTA_T = 1.0
 ZOOM = 10.0
 SPD_INCREMENT_COA = 10.0 # knots
 SPD_INCREMENT_COB = 6.0 # knots
@@ -236,7 +236,8 @@ class MATCEnv(ParallelEnv):
 
     
     def reset(self, seed=None):
-
+        # Import generate_airspace_config at the start of reset
+       
         self._seed(seed)
         
         # Hard reset BlueSky simulation state for reproducibility
@@ -692,6 +693,9 @@ class MATCEnv(ParallelEnv):
         else:
             abs_acceleration = (self.current_speeds[agent] - self.previous_speeds[agent])/self.dt
 
+        # print acceleration
+        # print(f"Agent: {agent}, Acceleration: {abs_acceleration}")
+
         route_id = self.agent_route_ids[agent]
 
         if agent in self.previous_actions.keys():
@@ -712,6 +716,8 @@ class MATCEnv(ParallelEnv):
             prev_action,
             dangerous_zone_flag
         ]]).reshape(1, -1)
+
+        
         return ownship_observations
     
     def observations(self, current_step_agents):
@@ -1172,6 +1178,8 @@ class MATCEnv(ParallelEnv):
                 # print(f"Current speed: {cur_ac_spd} New speed: {new_ac_spd}")
                 stack.stack(f'SPD {flight_number} {new_ac_spd}')
                 self.cmd_history.append(f'00:00:{self.get_agent_time(agent):.2f}>SPD {flight_number} {new_ac_spd}')
+                # print BS acceleration
+            
 
         # Simulate the environment for one step
         self._sim_step()

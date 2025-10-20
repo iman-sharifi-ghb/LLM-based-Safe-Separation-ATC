@@ -1,10 +1,10 @@
 import wandb
 import numpy as np
 from envs import my_matc_env_rb_strong
-from PPO_attention import PPO_Agent
-from PPO_attention import Memory
-from PPO_attention import compute_gae, discount
-from PPO_attention import schedule_beta
+# from PPO_attention import PPO_Agent
+# from PPO_attention import Memory
+# from PPO_attention import compute_gae, discount
+# from PPO_attention import schedule_beta
 import bluesky as bs
 import torch
 import torch.nn.functional as F
@@ -25,7 +25,7 @@ MAX_NUM_AGENTS = 20
 NUM_INTRUDERS = 3
 
 
-NUM_EPISODES = 300
+NUM_EPISODES = 1 #300 
 
 # Example usage
 if __name__ == '__main__':
@@ -60,7 +60,9 @@ if __name__ == '__main__':
     numEpisodes = NUM_EPISODES
 
     # Initializing the environment
-    env = my_matc_env_rb_strong.MATCEnv('routes/matc/routes_two_companies.json', render_mode=RENDER_MODE)
+    airspace_config = {"original": "routes/matc/routes_two_companies.json",
+                       "custom": "routes/matc/auto_airspace_config.json"}
+    env = my_matc_env_rb_strong.MATCEnv(airspace_config['custom'], render_mode=RENDER_MODE)
 
     # Company list
     companylist = ['CoA', 'CoB']

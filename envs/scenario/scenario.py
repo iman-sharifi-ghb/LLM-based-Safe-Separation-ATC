@@ -16,13 +16,15 @@ class BaseScenario:
     def render_environment(self):
         stack.stack(f'CIRCLE env {self.bounding_cicle.lat_center},{self.bounding_cicle.lon_center},{self.bounding_cicle.radius_nm}')
         stack.stack('AREA env')
+        # print the coordinates of the bounding circle center and radius
+        print(f'Bounding circle center: ({self.bounding_cicle.lat_center}, {self.bounding_cicle.lon_center}), radius: {self.bounding_cicle.radius_nm} NM')
     
 
 
 class ATCScenario(BaseScenario):
 
     def __init__(self, route_file='routes/matc/routes.json'):
-        Root_path = "/Users/imansharifi/Documents/VirtualEnvs/ReinforcementLearning/Code/Project3/ATC_MARL_2/"
+        Root_path = "/Users/alexzongo/Documents/courses/LLM and VLM/project/LLM-based-Safe-Separation-ATC/"
         with open(Root_path+route_file, 'r') as f:
             data = json.load(f)
         
