@@ -62,6 +62,11 @@ new_waypoints_ref = {
 
 INITIAL_SPEED = [25]  # m/s
 
+rotor_aircraft_types = ["Amzn", "Xwing"]
+rotor_aircraft_colors = {"Amzn": "CYAN", "Xwing": "MAGENTA"}
+fixed_wing_aircraft_types = ["B787", "A320"]
+fixed_wing_aircraft_colors = {"B787": "WHITE", "A320": "YELLOW"}
+
 # Utility: geographic offset
 def destination_point(lat, lon, bearing_deg, distance_m):
     R = 6371000.0
@@ -208,19 +213,20 @@ def make_distribution(spawn=5):
 
 def build_routes(wps_dict, add_new=False):
     routes = []
-
+    
     # existing sequences
     base_sequences = [
-        ("AA", "Amzn", ["WP1","WP3","WP9","WP4"]),
-        ("AB", "Xwing", ["WP2","WP3","WP9","WP4"]),
-        ("AC", "Amzn", ["WP5","WP7","WP9","WP8"]),
-        ("AD", "Xwing", ["WP6","WP7","WP9","WP8"])
+        ("AA", np.random.choice(rotor_aircraft_types), ["WP1","WP3","WP9","WP4"]),
+        ("AB", np.random.choice(rotor_aircraft_types), ["WP2","WP3","WP9","WP4"]),
+        ("AC", np.random.choice(rotor_aircraft_types), ["WP5","WP7","WP9","WP8"]),
+        ("AD", np.random.choice(rotor_aircraft_types), ["WP6","WP7","WP9","WP8"])
     ]
 
     for prefix, aircraft, seq in base_sequences:
         route = {
             "flight_prefix": [prefix],
             "aircraft": [aircraft],
+            "aircraft_color": [rotor_aircraft_colors[aircraft]],
             "distribution": make_distribution(),
             "end_waypoint_1": {"name": seq[-1], "speed": int(np.random.choice(INITIAL_SPEED)), "end": False},
             "end_waypoint_2": {"name": seq[0], "speed": int(np.random.choice(INITIAL_SPEED)), "end": False},
@@ -260,9 +266,11 @@ def build_routes(wps_dict, add_new=False):
             rand_dist = avg_dist * random.uniform(0.95, 1.05)
             lat, lon = destination_point(wp3["latitude"], wp3["longitude"], rand_brg, rand_dist)
             wps_dict["WP10"] = {"latitude": round(lat,5), "longitude": round(lon,5)}
+            ac = np.random.choice(rotor_aircraft_types)
             new_route = {
                 "flight_prefix": ["AE"],
-                "aircraft": ["Amzn"],
+                "aircraft": [ac],
+                "aircraft_color": [rotor_aircraft_colors[ac]],
                 "distribution": make_distribution(),
                 "end_waypoint_1": {"name": "WP4", "speed": int(np.random.choice(INITIAL_SPEED)), "end": False},
                 "end_waypoint_2": {"name": "WP10", "speed": int(np.random.choice(INITIAL_SPEED)), "end": False},
@@ -288,9 +296,11 @@ def build_routes(wps_dict, add_new=False):
             rand_dist = avg_dist * random.uniform(0.95, 1.05)
             lat, lon = destination_point(wp7["latitude"], wp7["longitude"], rand_brg, rand_dist)
             wps_dict["WP11"] = {"latitude": round(lat,5), "longitude": round(lon,5)}
+            ac = np.random.choice(rotor_aircraft_types)
             new_route = {
                 "flight_prefix": ["AF"],
-                "aircraft": ["Xwing"],
+                "aircraft": [ac],
+                "aircraft_color": [rotor_aircraft_colors[ac]],
                 "distribution": make_distribution(),
                 "end_waypoint_1": {"name": "WP8", "speed": int(np.random.choice(INITIAL_SPEED)), "end": False},
                 "end_waypoint_2": {"name": "WP11", "speed": int(np.random.choice(INITIAL_SPEED)), "end": False},
