@@ -1,11 +1,13 @@
 import os
 import math, random, json
 
+import numpy as np
+
 # ========================
 # PARAMETERS
 # ========================
-CENTER_LAT, CENTER_LON = 33.15516, -96.869125
-RADIUS_NM = 3.99
+# CENTER_LAT, CENTER_LON = 33.15516, -96.869125
+RADIUS_NM = 50.0
 RADIUS_M = RADIUS_NM * 1852.0
 
 BASE_WAYPOINTS = {
@@ -19,6 +21,46 @@ BASE_WAYPOINTS = {
     "WP8": (33.18607, -96.83017),
     "WP9": (33.16731, -96.84644)   # intersection (fixed)
 }
+
+FIXED_POINTS = {
+    "WP3": BASE_WAYPOINTS["WP3"],
+    "WP7": BASE_WAYPOINTS["WP7"],
+    "WP9": BASE_WAYPOINTS["WP9"]
+}
+
+# CENTER_LAT, CENTER_LON = 33.15516, -96.869125
+CENTER_LAT = sum(lat for lat, _ in FIXED_POINTS.values()) / len(FIXED_POINTS)
+CENTER_LON = sum(lon for _, lon in FIXED_POINTS.values()) / len(FIXED_POINTS)
+print(f"Computed center point: ({CENTER_LAT}, {CENTER_LON})")
+
+
+CENTERS = {
+    "WP1": "WP3",
+    "WP2": "WP3",
+    "WP5": "WP7",
+    "WP6": "WP7",
+    "WP4": "WP9",
+    "WP8": "WP9",
+    "WP3": (CENTER_LAT, CENTER_LON),
+    "WP7": (CENTER_LAT, CENTER_LON),
+    "WP9": (CENTER_LAT, CENTER_LON)
+}
+# Reference points
+ref_points = {
+    "WP1": "WP3",
+    "WP2": "WP3",
+    "WP5": "WP7",
+    "WP6": "WP7",
+    "WP4": "WP9",
+    "WP8": "WP9"
+}
+new_waypoints_ref = {
+    "WP10": "WP3",
+    "WP11": "WP7",
+    "WP12": "WP9"
+}
+
+INITIAL_SPEED = [25]  # m/s
 
 # Utility: geographic offset
 def destination_point(lat, lon, bearing_deg, distance_m):
@@ -74,62 +116,64 @@ def randomize_waypoints(
     radius_m=RADIUS_M,
     apply_global_rotation=True,
     apply_global_scaling=True,
-    scale_range=(0.9, 1.1)
+    scale_range=(0.8, 10)
 ):
     """
     Randomize waypoints by moving or rotating non-fixed waypoints relative to their reference points WP3, WP7, WP9.
     Fixed points remain unchanged.
     """
+    mod_base_wps = base_wps.copy()
+    
+
     if apply_global_rotation:
-        rotation_angle = random.uniform(-120, 120)
+        rotation_angle = random.uniform(-180, 180)
         rotated_wps = {}
-        for name, (lat, lon) in base_wps.items():
+        for name, (lat, lon) in mod_base_wps.items():
             rlat, rlon = rotate_point_around_center(lat, lon, CENTER_LAT, CENTER_LON, rotation_angle)
             rotated_wps[name] = (rlat, rlon)
-        base_wps = rotated_wps
+        mod_base_wps = rotated_wps
         print(f"Applied global rotation of {rotation_angle:.2f} degrees to base waypoints.")
 
     # Optional: apply global scaling (uniform radial expansion/contraction from center)
     if apply_global_scaling:
         scale_factor = random.uniform(*scale_range)
         scaled_wps = {}
-        for name, (lat, lon) in base_wps.items():
-            dist = distance_m(CENTER_LAT, CENTER_LON, lat, lon)
-            brg = initial_bearing(CENTER_LAT, CENTER_LON, lat, lon)
+        for name, (lat, lon) in mod_base_wps.items():
+            if name not in fixed_points:
+                cent_lat, cent_lon = mod_base_wps[CENTERS[name]]
+            else:
+                cent_lat, cent_lon = CENTER_LAT, CENTER_LON
+            dist = distance_m(cent_lat, cent_lon, lat, lon)
+            brg = initial_bearing(cent_lat, cent_lon, lat, lon)
             new_dist = dist * scale_factor
             # Keep inside bounding circle
             if new_dist > radius_m:
                 new_dist = radius_m * 0.98
-            slat, slon = destination_point(CENTER_LAT, CENTER_LON, brg, new_dist)
+            slat, slon = destination_point(cent_lat, cent_lon, brg, new_dist)
             scaled_wps[name] = (slat, slon)
-        base_wps = scaled_wps
+        mod_base_wps = scaled_wps
         print(f"Applied global scaling factor of {scale_factor:.3f} to base waypoints.")
 
     new_wps = {}
-    # Reference points
-    ref_points = {
-        "WP1": "WP3",
-        "WP2": "WP3",
-        "WP5": "WP7",
-        "WP6": "WP7",
-        "WP4": "WP9",
-        "WP8": "WP9"
-    }
-    for name, (lat, lon) in base_wps.items():
+    
+    for name, (lat, lon) in mod_base_wps.items():
         if name in fixed_points:
             new_wps[name] = {"latitude": lat, "longitude": lon}
         else:
             ref_name = ref_points.get(name)
-            ref_lat, ref_lon = base_wps[ref_name]
+            ref_lat, ref_lon = mod_base_wps[ref_name]
+            # orig_ref_lat, orig_ref_lon = base_wps[ref_name]
             # Compute initial bearing and distance from reference point to original waypoint
             brg = initial_bearing(ref_lat, ref_lon, lat, lon)
             dist = distance_m(ref_lat, ref_lon, lat, lon)
             # Perturb bearing by ±20 degrees
             brg_new = (brg + random.uniform(-20, 20)) % 360
-            # Vary distance by ±10%
-            dist_new = dist * random.uniform(0.9, 1.1)
+            # Vary distance by ±20%
+            dist_new = dist * random.uniform(0.99, 1.2)
             # Compute new position from reference point
             nlat, nlon = destination_point(ref_lat, ref_lon, brg_new, dist_new)
+            
+            # Is this useful??
             # Check if new position is outside the global bounding circle
             dist_from_center = distance_m(CENTER_LAT, CENTER_LON, nlat, nlon)
             if dist_from_center > radius_m:
@@ -178,53 +222,81 @@ def build_routes(wps_dict, add_new=False):
             "flight_prefix": [prefix],
             "aircraft": [aircraft],
             "distribution": make_distribution(),
-            "end_waypoint_1": {"name": seq[-1], "speed": 25, "end": False},
-            "end_waypoint_2": {"name": seq[0], "speed": 25, "end": False},
-            "possible_paths": [make_path(seq)]
+            "end_waypoint_1": {"name": seq[-1], "speed": int(np.random.choice(INITIAL_SPEED)), "end": False},
+            "end_waypoint_2": {"name": seq[0], "speed": int(np.random.choice(INITIAL_SPEED)), "end": False},
+            "possible_paths": [make_path(seq, spd=int(np.random.choice(INITIAL_SPEED)))]
         }
         routes.append(route)
 
-    # Optionally add a new route WP10 → WP3 → WP9 → WP4
+    # Optionally and randomly add a new routes: WP10 → WP3 → WP9 → WP4, WP11 -> WP7 -> WP9 -> WP8, 
     if add_new:
-        # Use WP3 as reference for bearings and distances of WP1 and WP2
-        wp1 = wps_dict["WP1"]
-        wp2 = wps_dict["WP2"]
-        wp3 = wps_dict["WP3"]
-        brg1 = initial_bearing(wp3["latitude"], wp3["longitude"], wp1["latitude"], wp1["longitude"])
-        brg2 = initial_bearing(wp3["latitude"], wp3["longitude"], wp2["latitude"], wp2["longitude"])
-        # Ensure the sector is in the correct direction
-        # Find the smallest positive angular sector between brg1 and brg2
+        add_wp10 = random.choice([True, False])
+        add_wp11 = random.choice([True, False])
+        # if not (add_wp10 or add_wp11):
+        #     add_wp10 = True  # ensure at least one is created
+
         def sector_bounds(b1, b2):
-            # Returns (min_brg, max_brg) such that going from min_brg to max_brg is the smaller angle
             diff = (b2 - b1) % 360
             if diff <= 180:
                 return b1, b2
             else:
                 return b2, b1
-        min_brg, max_brg = sector_bounds(brg1, brg2)
-        # Pick random bearing within the sector
-        if min_brg <= max_brg:
-            rand_brg = random.uniform(min_brg, max_brg)
-        else:
-            # Sector wraps around 360
-            span = (max_brg + 360) - min_brg
-            rand_brg = (min_brg + random.uniform(0, span)) % 360
-        # Distance: average of WP1 and WP2 from WP3, with small random variation (±5%)
-        dist1 = distance_m(wp3["latitude"], wp3["longitude"], wp1["latitude"], wp1["longitude"])
-        dist2 = distance_m(wp3["latitude"], wp3["longitude"], wp2["latitude"], wp2["longitude"])
-        avg_dist = (dist1 + dist2) / 2.0
-        rand_dist = avg_dist * random.uniform(0.95, 1.05)
-        lat, lon = destination_point(wp3["latitude"], wp3["longitude"], rand_brg, rand_dist)
-        wps_dict["WP10"] = {"latitude": round(lat,5), "longitude": round(lon,5)}
-        new_route = {
-            "flight_prefix": ["AE"],
-            "aircraft": ["Amzn"],
-            "distribution": make_distribution(),
-            "end_waypoint_1": {"name": "WP4", "speed": 25, "end": False},
-            "end_waypoint_2": {"name": "WP10", "speed": 25, "end": False},
-            "possible_paths": [make_path(["WP10","WP3","WP9","WP4"])]
-        }
-        routes.append(new_route)
+
+        if add_wp10:
+            wp1 = wps_dict["WP1"]
+            wp2 = wps_dict["WP2"]
+            wp3 = wps_dict["WP3"]
+            brg1 = initial_bearing(wp3["latitude"], wp3["longitude"], wp1["latitude"], wp1["longitude"])
+            brg2 = initial_bearing(wp3["latitude"], wp3["longitude"], wp2["latitude"], wp2["longitude"])
+            min_brg, max_brg = sector_bounds(brg1, brg2)
+            if min_brg <= max_brg:
+                rand_brg = random.uniform(min_brg+15, max_brg-15)
+            else:
+                span = (max_brg + 360) - min_brg
+                rand_brg = (min_brg + random.uniform(0, span)) % 360
+            dist1 = distance_m(wp3["latitude"], wp3["longitude"], wp1["latitude"], wp1["longitude"])
+            dist2 = distance_m(wp3["latitude"], wp3["longitude"], wp2["latitude"], wp2["longitude"])
+            avg_dist = (dist1 + dist2) / 2.0
+            rand_dist = avg_dist * random.uniform(0.95, 1.05)
+            lat, lon = destination_point(wp3["latitude"], wp3["longitude"], rand_brg, rand_dist)
+            wps_dict["WP10"] = {"latitude": round(lat,5), "longitude": round(lon,5)}
+            new_route = {
+                "flight_prefix": ["AE"],
+                "aircraft": ["Amzn"],
+                "distribution": make_distribution(),
+                "end_waypoint_1": {"name": "WP4", "speed": int(np.random.choice(INITIAL_SPEED)), "end": False},
+                "end_waypoint_2": {"name": "WP10", "speed": int(np.random.choice(INITIAL_SPEED)), "end": False},
+                "possible_paths": [make_path(["WP10","WP3","WP9","WP4"], spd=int(np.random.choice(INITIAL_SPEED)))]
+            }
+            routes.append(new_route)
+
+        if add_wp11:
+            wp5 = wps_dict["WP5"]
+            wp6 = wps_dict["WP6"]
+            wp7 = wps_dict["WP7"]
+            brg5 = initial_bearing(wp7["latitude"], wp7["longitude"], wp5["latitude"], wp5["longitude"])
+            brg6 = initial_bearing(wp7["latitude"], wp7["longitude"], wp6["latitude"], wp6["longitude"])
+            min_brg, max_brg = sector_bounds(brg5, brg6)
+            if min_brg <= max_brg:
+                rand_brg = random.uniform(min_brg+15, max_brg-15)
+            else:
+                span = (max_brg + 360) - min_brg
+                rand_brg = (min_brg + random.uniform(0, span)) % 360
+            dist5 = distance_m(wp7["latitude"], wp7["longitude"], wp5["latitude"], wp5["longitude"])
+            dist6 = distance_m(wp7["latitude"], wp7["longitude"], wp6["latitude"], wp6["longitude"])
+            avg_dist = (dist5 + dist6) / 2.0
+            rand_dist = avg_dist * random.uniform(0.95, 1.05)
+            lat, lon = destination_point(wp7["latitude"], wp7["longitude"], rand_brg, rand_dist)
+            wps_dict["WP11"] = {"latitude": round(lat,5), "longitude": round(lon,5)}
+            new_route = {
+                "flight_prefix": ["AF"],
+                "aircraft": ["Xwing"],
+                "distribution": make_distribution(),
+                "end_waypoint_1": {"name": "WP8", "speed": int(np.random.choice(INITIAL_SPEED)), "end": False},
+                "end_waypoint_2": {"name": "WP11", "speed": int(np.random.choice(INITIAL_SPEED)), "end": False},
+                "possible_paths": [make_path(["WP11","WP7","WP9","WP8"], spd=int(np.random.choice(INITIAL_SPEED)))]
+            }
+            routes.append(new_route)
 
     return routes, wps_dict
 
@@ -232,7 +304,7 @@ def build_routes(wps_dict, add_new=False):
 # MAIN DRIVER
 # ========================
 
-def generate_airspace_config(out_dir="routes/matc", add_new=True, scale_range=(0.75, 1.1)):
+def generate_airspace_config(out_dir="routes/matc", add_new=True, scale_range=(0.8, 2)):
     """
     Generate a randomized airspace configuration and write it to a JSON file.
     Returns the path of the generated JSON file.

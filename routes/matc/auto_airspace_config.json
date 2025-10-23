@@ -2,61 +2,56 @@
   "meta": {
     "description": "Generated airspace configuration with fixed merge/intersection points.",
     "center": [
-      33.15516,
-      -96.869125
+      33.163513333333334,
+      -96.86969333333333
     ],
-    "radius_nm": 3.99
+    "radius_nm": 50.0
   },
   "waypoints": [
     {
       "name": "WP1",
-      "latitude": 33.19902,
-      "longitude": -96.88481
+      "latitude": 33.12044,
+      "longitude": -96.90734
     },
     {
       "name": "WP2",
-      "latitude": 33.1764,
-      "longitude": -96.89847
+      "latitude": 33.12357,
+      "longitude": -96.87198
     },
     {
       "name": "WP3",
-      "latitude": 33.17913950352958,
-      "longitude": -96.87273432670182
+      "latitude": 33.14746572290553,
+      "longitude": -96.8883713592825
     },
     {
       "name": "WP4",
-      "latitude": 33.14797,
-      "longitude": -96.82976
+      "latitude": 33.20827,
+      "longitude": -96.86858
     },
     {
       "name": "WP5",
-      "latitude": 33.14642,
-      "longitude": -96.90829
+      "latitude": 33.12923,
+      "longitude": -96.82054
     },
     {
       "name": "WP6",
-      "latitude": 33.12583,
-      "longitude": -96.89855
+      "latitude": 33.17537,
+      "longitude": -96.8053
     },
     {
       "name": "WP7",
-      "latitude": 33.145361080802246,
-      "longitude": -96.87940059417345
+      "latitude": 33.16282216210843,
+      "longitude": -96.84221725770404
     },
     {
       "name": "WP8",
-      "latitude": 33.16657,
-      "longitude": -96.8313
+      "latitude": 33.19562,
+      "longitude": -96.90309
     },
     {
       "name": "WP9",
-      "latitude": 33.15937654785205,
-      "longitude": -96.84931325093729
-    },
-    {
-      "name": "WP10",
-      "latitude": 33.19802,
-      "longitude": -96.88496
+      "latitude": 33.180247178526535,
+      "longitude": -96.87849362124655
     }
   ],
   "routes": [
@@ -473,111 +468,6 @@
           },
           {
             "name": "WP8",
-            "speed": 25,
-            "altitude": "FL150",
-            "end": false
-          }
-        ]
-      ]
-    },
-    {
-      "flight_prefix": [
-        "AE"
-      ],
-      "aircraft": [
-        "Amzn"
-      ],
-      "distribution": [
-        {
-          "name": "Monday",
-          "spawn": {
-            "type": "rv_discrete",
-            "parameters": {
-              "values": [
-                [
-                  5
-                ],
-                [
-                  1
-                ]
-              ]
-            }
-          },
-          "spacing": {
-            "type": "rv_discrete",
-            "parameters": {
-              "values": [
-                [
-                  40,
-                  45,
-                  50,
-                  55,
-                  60,
-                  65,
-                  70,
-                  75,
-                  80,
-                  85
-                ],
-                [
-                  0.1,
-                  0.1,
-                  0.1,
-                  0.1,
-                  0.1,
-                  0.1,
-                  0.1,
-                  0.1,
-                  0.1,
-                  0.1
-                ]
-              ]
-            }
-          },
-          "direction_forward_probability": 1,
-          "flight_prefix_probabilities": [
-            1
-          ],
-          "aircraft_probabilities": [
-            1
-          ],
-          "path_probabilities": [
-            "1"
-          ]
-        }
-      ],
-      "end_waypoint_1": {
-        "name": "WP4",
-        "speed": 25,
-        "end": false
-      },
-      "end_waypoint_2": {
-        "name": "WP10",
-        "speed": 25,
-        "end": false
-      },
-      "possible_paths": [
-        [
-          {
-            "name": "WP10",
-            "speed": 25,
-            "altitude": "FL150",
-            "end": false
-          },
-          {
-            "name": "WP3",
-            "speed": 25,
-            "altitude": "FL150",
-            "end": false
-          },
-          {
-            "name": "WP9",
-            "speed": 25,
-            "altitude": "FL150",
-            "end": false
-          },
-          {
-            "name": "WP4",
             "speed": 25,
             "altitude": "FL150",
             "end": false

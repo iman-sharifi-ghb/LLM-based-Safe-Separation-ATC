@@ -18,14 +18,13 @@ import random
 import pickle
 import pandas as pd
 import argparse
+import json
 
 warnings.filterwarnings("ignore", category=UserWarning, message=".*?.*?")
 
 MAX_NUM_AGENTS = 20
 NUM_INTRUDERS = 3
-
-
-NUM_EPISODES = 1 #300 
+NUM_EPISODES = 1
 
 # Example usage
 if __name__ == '__main__':
@@ -38,7 +37,7 @@ if __name__ == '__main__':
     WANDB = False
     RENDER_MODE = 'server'
 
-    DATE = 'Aug25_sep29' # args.date
+    DATE = 'Oct18' # args.date
     # Model name
     MODEL_NAME_COMPANY1 = f'best_policy_CoA_{DATE}.pt'
     MODEL_NAME_COMPANY2 = f'best_policy_CoB_{DATE}.pt'
@@ -60,9 +59,7 @@ if __name__ == '__main__':
     numEpisodes = NUM_EPISODES
 
     # Initializing the environment
-    airspace_config = {"original": "routes/matc/routes_two_companies.json",
-                       "custom": "routes/matc/auto_airspace_config.json"}
-    env = my_matc_env_rb_strong.MATCEnv(airspace_config['custom'], render_mode=RENDER_MODE)
+    env = my_matc_env_rb_strong.MATCEnv('routes/matc/auto_airspace_config.json', render_mode=RENDER_MODE)
 
     # Company list
     companylist = ['CoA', 'CoB']
@@ -80,7 +77,8 @@ if __name__ == '__main__':
                 "Avg Velocity Rewards": [],
                 "Actions": [],
                 "Avg Speed": [],
-            }
+            } 
+
 
     # Training loop
     for episode in range(numEpisodes):
@@ -127,7 +125,8 @@ if __name__ == '__main__':
             if (all(env.dones.values()) or counter >= MAX_STEPS_SO_FAR):
                 END_EPISODE = True
 
-            
+            # Save data to a json file
+                
         
         # calculate sum of agent_counters
         total_agent_steps = sum(env.agent_counter.values())
@@ -324,7 +323,12 @@ if __name__ == '__main__':
             df = pd.DataFrame(mydataframe)
             df.to_csv(dataframe_name, index=False)
 
-
+    # Save dataset at the end of training
+    if len(env.all_state_action_pairs) > 0:
+        with open("raw_ownship_intruders_data_"+DATE+".jsonl", "w") as f:
+            for record in env.all_state_action_pairs:
+                f.write(json.dumps(record) + "\n")
+            
     # Finish wandb run
     if WANDB:
         wandb.finish()
