@@ -35,7 +35,7 @@ if __name__ == '__main__':
 
     TRAINING = False
     WANDB = False
-    RENDER_MODE = 'server'
+    RENDER_MODE = 'sim'
 
     DATE = 'Oct18' # args.date
     # Model name
