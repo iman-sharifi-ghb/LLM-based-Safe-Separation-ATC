@@ -5,7 +5,7 @@ bluesky/
 plugins/
 scenario/
 logs/
-outputs/
+output/
 cache/
 envs/
 *.csv
