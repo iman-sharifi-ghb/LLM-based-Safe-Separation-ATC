@@ -24,7 +24,7 @@ warnings.filterwarnings("ignore", category=UserWarning, message=".*?.*?")
 
 MAX_NUM_AGENTS = 20
 NUM_INTRUDERS = 3
-NUM_EPISODES = 1
+NUM_EPISODES = 20
 
 # Example usage
 if __name__ == '__main__':
@@ -59,7 +59,9 @@ if __name__ == '__main__':
     numEpisodes = NUM_EPISODES
 
     # Initializing the environment
-    env = my_matc_env_rb_strong.MATCEnv('routes/matc/auto_airspace_config.json', render_mode=RENDER_MODE)
+    flight_route_file = 'routes/matc/routes_two_companies.json'
+    aircraft_config_file = 'routes/matc/aircraft_configurations.json'
+    env = my_matc_env_rb_strong.MATCEnv(flight_route_file, aircraft_config_file, render_mode=RENDER_MODE)
 
     # Company list
     companylist = ['CoA', 'CoB']
@@ -79,7 +81,6 @@ if __name__ == '__main__':
                 "Avg Speed": [],
             } 
 
-
     # Training loop
     for episode in range(numEpisodes):
 
@@ -87,7 +88,7 @@ if __name__ == '__main__':
         start_time = time.time()
 
         rewards = {}
-        observations, processed_states, infos = env.reset()
+        observations, processed_states = env.reset()
         dones = {agent: 0 for agent in processed_states.keys()}  # Initialize done states for all agents
         episode_actions = {agent: [] for agent in processed_states.keys()}
         # for i in range(episode_length):
@@ -97,7 +98,7 @@ if __name__ == '__main__':
         END_EPISODE = False
         while not END_EPISODE: 
 
-            Actions = env.get_rb_actions(observations)
+            Actions, Reasons = env.get_rb_actions(observations)
             # print(Actions)
 
             # Step the environment
@@ -225,41 +226,10 @@ if __name__ == '__main__':
         avg_mission_acc_rewards_CoB = sum_mission_acc_rewards_CoB / total_steps / (MAX_NUM_AGENTS / 2) * 1000
         avg_velocity_rewards_CoB = sum_velocity_rewards_CoB / total_steps / (MAX_NUM_AGENTS / 2) * 1000
 
-        # sum_rewards_CoA = sum_episode_rewards_CoA #sum_distance_rewards_CoA + sum_velocity_rewards_CoA + sum_action_rewards_CoA + sum_time_rewards_CoA
-
-        # avg_rewards_all_agents = sum_episode_rewards/total_steps * counter
-        # # avg_rewards_all_agents = sum_episode_rewards/counter * 100.0
- 
-
-        # avg_episode_actions = {agent: float(np.mean(actions)) for agent, actions in episode_actions.items()}
-        # # Average of avg_episode_actions
-        # avg_action = np.mean(list(avg_episode_actions.values()))
-
         # Average speeds per episode
         avg_spds = env.get_avg_episode_spd()
         avg_spd_CoA = avg_spds['CoA']
         avg_spd_CoB = avg_spds['CoB']
-        # print(f"Average speed Co. A: {avg_spd_CoA:.4f}, Average speed Co. B: {avg_spd_CoB:.4f}")
-
-        # Merging points and intersection collisions
-        # M1_collisions = env.collision_counter['M1']
-        # M2_collisions = env.collision_counter['M2']
-        # In_collisions = env.collision_counter['In']
-        # All_collisions = env.collision_counter['All']
-        # print(f"Merging points collisions: {M1_collisions}, {M2_collisions}, Intersection collisions: {In_collisions}, All collisions: {All_collisions}")
-
-        # # Format `sum_rewards` to 4 decimal places
-        # avg_rewards_formatted = f"{avg_rewards_all_agents:.4f}"
-
-        # # Format `SumRewards` dictionary values to 4 decimal places
-        # # SumRewards_formatted = {agent: [f"{reward:.4f}" for reward in rewards] for agent, rewards in SumRewards.items()}
-        # sum_subrewards_formatted = [f"{sum_distance_rewards_all_agents:.4f}", f"{sum_action_rewards_all_agents:.4f}", f"{sum_time_rewards_all_agents:.4f}"]
-        # avg_subrewards_formatted = [f"{avg_distance_rewards_all_agents:.4f}", f"{avg_action_rewards_all_agents:.4f}", f"{avg_time_rewards_all_agents:.4f}"]
-        # # Format `avg_episode_actions` dictionary values to 4 decimal places
-        # avg_episode_actions_formatted = {agent: f"{avg_action:.4f}" for agent, avg_action in avg_episode_actions.items()}
-
-        # # Foramt avg_loss to 4 decimal places
-        # avg_loss = f"{avg_loss:.4f}"
 
         if num_of_collisions < 1:
             # Save Scenario
