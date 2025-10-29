@@ -22,6 +22,13 @@ BASE_WAYPOINTS = {
     "WP9": (33.16731, -96.84644)   # intersection (fixed)
 }
 
+
+WAYPOINTS_TYPES = {
+    "WP3": "merging",
+    "WP7": "merging",
+    "WP9": "intersection"
+}
+
 FIXED_POINTS = {
     "WP3": BASE_WAYPOINTS["WP3"],
     "WP7": BASE_WAYPOINTS["WP7"],
@@ -188,7 +195,7 @@ def randomize_waypoints(
                 original_dist_center = distance_m(CENTER_LAT, CENTER_LON, lat, lon)
                 proj_dist = min(original_dist_center * 1.1, radius_m * 0.98)
                 nlat, nlon = destination_point(CENTER_LAT, CENTER_LON, center_to_new_brg, proj_dist)
-            new_wps[name] = {"latitude": round(nlat, 5), "longitude": round(nlon, 5)}
+            new_wps[name] = {"latitude": round(nlat, 5), "longitude": round(nlon, 5), "type": WAYPOINTS_TYPES.get(name, "regular")}
     return new_wps
 
 # ========================
@@ -265,7 +272,7 @@ def build_routes(wps_dict, add_new=False):
             avg_dist = (dist1 + dist2) / 2.0
             rand_dist = avg_dist * random.uniform(0.95, 1.05)
             lat, lon = destination_point(wp3["latitude"], wp3["longitude"], rand_brg, rand_dist)
-            wps_dict["WP10"] = {"latitude": round(lat,5), "longitude": round(lon,5)}
+            wps_dict["WP10"] = {"latitude": round(lat,5), "longitude": round(lon,5), "type": "regular"}
             ac = np.random.choice(rotor_aircraft_types)
             new_route = {
                 "flight_prefix": ["AE"],
@@ -295,7 +302,7 @@ def build_routes(wps_dict, add_new=False):
             avg_dist = (dist5 + dist6) / 2.0
             rand_dist = avg_dist * random.uniform(0.95, 1.05)
             lat, lon = destination_point(wp7["latitude"], wp7["longitude"], rand_brg, rand_dist)
-            wps_dict["WP11"] = {"latitude": round(lat,5), "longitude": round(lon,5)}
+            wps_dict["WP11"] = {"latitude": round(lat,5), "longitude": round(lon,5), "type": "regular"}
             ac = np.random.choice(rotor_aircraft_types)
             new_route = {
                 "flight_prefix": ["AF"],
