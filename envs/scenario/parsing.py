@@ -131,6 +131,7 @@ def parse_waypoints(raw_waypoints: list[Dict]):
 
     for i, waypoint in enumerate(raw_waypoints, 1):
         wp_name = waypoint.get("name", None)
+        wp_type = waypoint.get("type", None)
         latitude = waypoint.get('latitude', None)
         longitude = waypoint.get('longitude', None)
         
@@ -151,6 +152,7 @@ def parse_waypoints(raw_waypoints: list[Dict]):
 
         parsed_waypoints.append(Waypoint(
                 name=wp_name, 
+                type=wp_type,
                 coordinate=Coordinate(latitude=latitude, longitude=longitude)
             )
         )

@@ -11,6 +11,7 @@ from bluesky.traffic.performance import openap
 from bluesky import stack
 from bluesky.tools import geo
 import random
+import json
 
 from .scenario.utils import calculate_heading, metric_spd_to_knots_rounded
 from .scenario.scenario import ATCScenario
@@ -18,23 +19,14 @@ from .scenario.utils import haversine_distance, normalize
 
 DELTA_T = 3.0
 ZOOM = 10.0
-SPD_INCREMENT_COA = 10.0 # knots
-SPD_INCREMENT_COB = 6.0 # knots
 NOISE = False
 SAVE_SCENARIO = False
+
 MAX_MISSION_TIME_COA = 18 * 60 # seconds
 MAX_MISSION_TIME_COB = 23 * 60 # seconds
 
 # Company 1: Amazon
 # Company 2: Google Wing 
-
-# Velocities in knots
-MIN_SPD_COA = 0 # (m/s) ~20 knots
-MIN_SPD_COB = 0 # (m/s) ~20 knots
-MAX_SPD_COA = 45 # (m/s) ~60 knots
-MAX_SPD_COB = 30 # (m/s) ~85 knots
-SPEED_RANGE_COA = MAX_SPD_COA - MIN_SPD_COA
-SPEED_RANGE_COB = MAX_SPD_COB - MIN_SPD_COB
 ACC_RANGE = 1.0
 
 # North is 0 degrees, east is 90 degrees, south is 180 degrees, and west is -90 degrees
@@ -43,13 +35,6 @@ HDG_RANGE = 180.0
 MAX_NUM_AGENTS = 20
 NUM_INTRUDERS = 3
 NUM_ROUTES = 4
-
-# Nautical miles
-MAX_DIST_GOAL = 3.0 * 0.868976 # 5 miles in nautical miles
-COLLISION_DIST = 50 * 0.000539957 # 100 meters to nautical miles
-SAFETY_DIST = 500 * 0.000539957 # 400 meters to nautical miles
-MAX_DIST_COA = 1000 * 0.00053995 * 3 # Maximum distance in nautical miles for CoA
-MAX_DIST_COB = 750 * 0.00053995 * 3 # Maximum distance in nautical miles for CoB
 GOAL_RADIUS = 50 * 0.000539957 # 0.5 nautical miles
 
 STATE_SIZE = 6
@@ -65,32 +50,10 @@ W_MISSION_REW = 0.1
 
 OFFSET_TIME = 55.00
 
-
-class ObservationTypes(Enum):
-    LAT = 0
-    LON = 1
-    CAS = 2
-    HDG = 3
-    ACC = 4
-    ROUTE = 5
-    ACT = 6
-
-# Define the min and max values for each observation type
-OBSERVATION_BOUNDS = {
-    ObservationTypes.LAT: (lambda self: self.scenario.bounding_cicle.min_lat, lambda self: self.scenario.bounding_cicle.max_lat),
-    ObservationTypes.LON: (lambda self: self.scenario.bounding_cicle.min_lon, lambda self: self.scenario.bounding_cicle.max_lon),
-    ObservationTypes.CAS: (0, 400),
-    ObservationTypes.HDG: (0, 360),
-    ObservationTypes.ACC: (-np.inf, np.inf),
-    ObservationTypes.ROUTE: (0, 3),
-    ObservationTypes.ACT: (0, 5)
-}
-
-
 class MATCEnv(ParallelEnv):
     metadata = {"render_modes": ['sim', 'server', 'export_scenario']}
 
-    def __init__(self, flight_route_file: str, render_mode: Literal['sim', 'export_scenario', 'server'] = 'sim'):
+    def __init__(self, flight_route_file: str, aircraft_config_file: str, render_mode: Literal['sim', 'export_scenario', 'server'] = 'sim'):
 
         self.render_mode = render_mode
         self.noise = NOISE
@@ -107,11 +70,16 @@ class MATCEnv(ParallelEnv):
 
         # Initialize the scenario
         self.scenario = ATCScenario(flight_route_file)
+        with open(aircraft_config_file, 'r') as f:
+            self.ac_configs = json.load(f)
 
         merging_waypoint1 = "WP3"
         merging_waypoint2 = "WP7"
         intersection_waypoint = "WP9"
         # Import waypoints from the scenario
+        self.regular_wpts = []
+        self.merging_wpts = []
+        self.intersection_wpts = []
         for waypoint in self.scenario.waypoints:
             if waypoint.name == merging_waypoint1:
                 self.merging_waypoint1_location = (waypoint.coordinate.latitude, waypoint.coordinate.longitude)
@@ -120,26 +88,23 @@ class MATCEnv(ParallelEnv):
             if waypoint.name == intersection_waypoint:
                 self.intersection_waypoint_location = (waypoint.coordinate.latitude, waypoint.coordinate.longitude)
 
-        self.merging_wpts = [merging_waypoint1, merging_waypoint2]
-        self.intersection_wpts = [intersection_waypoint]
+            if waypoint.type == 'regular':
+                self.regular_wpts.append(waypoint.name)
+            if waypoint.type == 'merging':
+                self.merging_wpts.append(waypoint.name)
+            if waypoint.type == 'intersection':
+                self.intersection_wpts.append(waypoint.name)
+
+        # self.merging_wpts = [merging_waypoint1, merging_waypoint2]
+        # self.intersection_wpts = [intersection_waypoint]
         # call _seed to set the random seed
-        self._seed(seed=42)
+        # self._seed(seed=42)
 
         # Take a sample schedule from the scenario
         self.schedule = self.scenario.sample_schedule()
 
         self.time_step = 0
         self.lat_lon_accs = {}
-
-        # Ownship and intruders distance threshold
-        self.ownship_collision_dist = COLLISION_DIST
-        self.safety_distance = SAFETY_DIST
-
-        # Speed limits
-        self.min_spd_CoA = metric_spd_to_knots_rounded(MIN_SPD_COA)
-        self.max_spd_CoA = metric_spd_to_knots_rounded(MAX_SPD_COA)
-        self.min_spd_CoB = metric_spd_to_knots_rounded(MIN_SPD_COB)
-        self.max_spd_CoB = metric_spd_to_knots_rounded(MAX_SPD_COB)
 
         self.min_acc = -ACC_RANGE
         self.max_acc = ACC_RANGE
@@ -201,7 +166,6 @@ class MATCEnv(ParallelEnv):
             timestamp = bs.sim.utc.strftime('%H:%M:%S.%f')[:-4]  # type: ignore
             self.cmd_history.append(f'{timestamp}>{cmd}')
 
-
     def _agent_has_terminated(self, agent):
         return bs.traf.id2idx(agent) == -1
 
@@ -238,7 +202,6 @@ class MATCEnv(ParallelEnv):
 
         # Enable BlueSky's internal seeding for full reproducibility
         stack.stack(f'SEED {seed}')
-
     
     def reset(self, seed=None):
 
@@ -276,6 +239,7 @@ class MATCEnv(ParallelEnv):
         stack.stack('OP')
 
         self.agent_init_wpts = {}
+        self.agent_route_ids = {}
         for flight in self.schedule:
             origin = flight.path[0]
             destination = flight.path[-1]
@@ -283,7 +247,7 @@ class MATCEnv(ParallelEnv):
             initial_speed = origin.speed 
             
             stack.stack(f'DELAY {flight.entry_time} CRE {flight.flight_number} {flight.aircraft_type} {origin.waypoint.coordinate} {initial_heading} {origin.altitude} {initial_speed if not origin.end else 60}')
-            # change the color of the aircraft
+
             stack.stack(f'DELAY {flight.entry_time} COLOR {flight.flight_number} {flight.aircraft_color}')
 
             if origin.end:
@@ -305,6 +269,7 @@ class MATCEnv(ParallelEnv):
 
             # Get initial waypoints
             self.agent_init_wpts[flight.flight_number] = flight.path[0].waypoint.name
+            self.agent_route_ids[flight.flight_number] = self.get_route_id(flight.flight_number)  
             # print(f"Flight {flight.flight_number} initial waypoint: {self.agent_init_wpts[flight.flight_number]}")
             
             # Convert destination waypoint coordinates from string of numbers to tuple of floats
@@ -329,20 +294,20 @@ class MATCEnv(ParallelEnv):
 
             # stack.stack('DTMULT 0.1')
 
-        self.agent_route_ids = {}
-        # Convert initial waypoints to route IDs for each agent
-        for agent, init_wpt in self.agent_init_wpts.items():
-            if init_wpt == "WP1":
-                route_id = 1
-            elif init_wpt == "WP2":
-                route_id = 2
-            elif init_wpt == "WP5":
-                route_id = 3
-            elif init_wpt == "WP6":
-                route_id = 4
-            else:
-                route_id = -1
-            self.agent_route_ids[agent] = route_id
+        # self.agent_route_ids = {}
+        # # Convert initial waypoints to route IDs for each agent
+        # for agent, init_wpt in self.agent_init_wpts.items():
+        #     if init_wpt == "WP1":
+        #         route_id = 1
+        #     elif init_wpt == "WP2":
+        #         route_id = 2
+        #     elif init_wpt == "WP5":
+        #         route_id = 3
+        #     elif init_wpt == "WP6":
+        #         route_id = 4
+        #     else:
+        #         route_id = -1
+        #     self.agent_route_ids[agent] = route_id
         
         # One step forward in the simulation
         while len(self.agents) < 1:
@@ -351,7 +316,6 @@ class MATCEnv(ParallelEnv):
         current_step_agents = self.agents
         observations = self.observations(current_step_agents)
         processed_observations = self.process_agents(observations)
-        infos = self.infos(current_step_agents)
 
         # Reset the parameters
         self.agent_counter = {}
@@ -400,7 +364,7 @@ class MATCEnv(ParallelEnv):
         # Start scenario recording
         self.gather_cmd_history()
 
-        return observations, processed_observations, infos
+        return observations, processed_observations
     
     def gather_cmd_history(self):
         
@@ -456,39 +420,6 @@ class MATCEnv(ParallelEnv):
     def agents(self):
         return bs.traf.id
 
-    AgentInfo = TypedDict('AgentInfo', {
-        'CONFLICT': bool,
-        'MAXIMUM_CLOSEST_POINT_OF_APPROACH_TIME': str,
-        'AIRCRAFT_MINIMUM_HORIZONTAL_SEPARATION': float,
-        'AIRCRAFT_MINIMUM_VERTICAL_SEPARATION': float,
-        'AIRCRAFT_TYPE': str,
-        'PHASE': float,
-        'THRUST': float,
-        'FUEL_FLOW': float,
-        'DRAG': float,
-        'DISTANCE_FLOWN': float
-    })
-    def info(self, agent) -> AgentInfo:
-        ac_id = bs.traf.id2idx(agent)
-        if ac_id == -1:
-            return {}
-
-        return {
-            'CONFLICT': bs.traf.cd.inconf[ac_id].item(),
-            'MAXIMUM_CLOSEST_POINT_OF_APPROACH_TIME': bs.traf.cd.tcpamax[ac_id].item(),
-            'AIRCRAFT_MINIMUM_HORIZONTAL_SEPARATION': bs.traf.cd.rpz[ac_id].item(),
-            'AIRCRAFT_MINIMUM_VERTICAL_SEPARATION': bs.traf.cd.rpz[ac_id].item(),
-            'AIRCRAFT_TYPE': bs.traf.type[ac_id],
-            'PHASE': bs.traf.perf.phase[ac_id].item(),
-            'THRUST': bs.traf.perf.thrust[ac_id].item(),
-            'FUEL_FLOW': bs.traf.perf.fuelflow[ac_id].item(),
-            'DRAG': bs.traf.perf.drag[ac_id].item(),
-            'DISTANCE_FLOWN': bs.traf.distflown[ac_id].item()
-        }
-    
-    def infos(self, current_step_agents):
-        return {agent: self.info(agent) for agent in current_step_agents}
-
     def get_operation_phase_agents(self, observations):
         # We have in general 3 phases: before the merging waypoint, between the merging waypoint and the intersection waypoint, and after the intersection waypoint
         agent_phases = {}
@@ -541,9 +472,9 @@ class MATCEnv(ParallelEnv):
         # If the aircraft is in the first phase and the distance to the merging waypoint is less than the safety distance, then the aircraft is entering the dangerous area
         # If the aircraft is in the second phase and the distance to the intersection waypoint is less than the safety distance, then the aircraft is entering the dangerous area
         # If the aircraft is in the third phase, then the aircraft is not entering the dangerous area
-        if agent_phase == 0 and dist_to_merging_waypoint < self.safety_distance:
+        if agent_phase == 0 and dist_to_merging_waypoint < self.get_agent_safety_distance(agent):
             flag = 1
-        elif agent_phase == 1 and dist_to_intersection_waypoint < self.safety_distance:
+        elif agent_phase == 1 and dist_to_intersection_waypoint < self.get_agent_safety_distance(agent):
             flag = 1
         else:
             flag = 0
@@ -677,15 +608,13 @@ class MATCEnv(ParallelEnv):
         """
         for agent, obs in observations.items():
             agent_lat, agent_lon = obs[0][0], obs[0][1]
-            sensory_range = self.get_agent_sensory_range(agent)
-            # Convert nautical miles to degrees (approximation)
-            radius_in_degrees = sensory_range
+            radius_in_degrees = self.get_agent_detection_range(agent)
             self.draw_circle(agent, agent_lat, agent_lon, radius_in_degrees)
 
     def observation(self, agent):
         ownship_ac_idx = bs.traf.id2idx(agent)
         if ownship_ac_idx == -1:
-            return np.zeros_like(len(ObservationTypes))
+            return np.zeros_like(8)
 
         ownship_lat = bs.traf.lat[ownship_ac_idx]
         ownship_lon = bs.traf.lon[ownship_ac_idx]
@@ -748,11 +677,11 @@ class MATCEnv(ParallelEnv):
                 num_successful_agents += 1
         return num_successful_agents
 
-    def distance_reward(self, distance):
-        if distance <= self.ownship_collision_dist:
+    def distance_reward(self, agent, distance):
+        if distance <= self.get_agent_collision_distance(agent):
             return -1, 1
-        elif self.ownship_collision_dist < distance < self.safety_distance:
-            return 0.1 * (-1 + 1/(self.safety_distance - self.ownship_collision_dist) * (distance - self.ownship_collision_dist)), 2
+        elif self.get_agent_collision_distance(agent) < distance < self.get_agent_safety_distance(agent):
+            return 0.1 * (-1 + 1/(self.get_agent_safety_distance(agent) - self.get_agent_collision_distance(agent)) * (distance - self.get_agent_collision_distance(agent))), 2
             # return -(distance/self.safety_distance - 1) ** 2, False
             # return 0, False
         else:
@@ -866,7 +795,7 @@ class MATCEnv(ParallelEnv):
             distance_reward = 0
             min_distance_to_agent = self.distances_to_ownship[agent]['distance']
             closest_intruder = self.distances_to_ownship[agent]['intruder']
-            dist_reward, truncation_flag = self.distance_reward(min_distance_to_agent)
+            dist_reward, truncation_flag = self.distance_reward(agent, min_distance_to_agent)
             # print(f"Agent: {agent}, Closest intruder: {closest_intruder}, Distance: {min_distance_to_agent}, Distance reward: {dist_reward}")
             distance_reward += dist_reward
 
@@ -937,18 +866,45 @@ class MATCEnv(ParallelEnv):
             return 'CoB'
         else:
             return 'unknown'
-    
-    def get_agent_sensory_range(self, agent):
+        
+    def get_agent_id_prefix(self, agent):
         """
-        Returns the sensory range of the agent based on its company.
+        Returns the ID prefix of the agent.
         """
-        company = self.get_agent_company(agent)
-        if company == 'CoA':
-            return MAX_DIST_COA
-        elif company == 'CoB':
-            return MAX_DIST_COB
+        if agent.startswith('AA'):
+            return 'AA'
+        elif agent.startswith('AB'):
+            return 'AB'
+        elif agent.startswith('AC'):
+            return 'AC'
+        elif agent.startswith('AD'):
+            return 'AD'
         else:
-            return COLLISION_DIST
+            return 'unknown'
+        
+    def get_agent_safety_distance(self, agent):
+        """
+        Returns the safety distance of the agent based on its prefix.
+        """
+        agent_prefix = self.get_agent_id_prefix(agent)
+        agent_config = self.ac_configs.get(agent_prefix, None)
+        return agent_config['safety_radius(nm)']
+    
+    def get_agent_collision_distance(self, agent):
+        """
+        Returns the collision distance of the agent based on its prefix.
+        """
+        agent_prefix = self.get_agent_id_prefix(agent)
+        agent_config = self.ac_configs.get(agent_prefix, None)
+        return agent_config['collision_radius(nm)']
+        
+    def get_agent_detection_range(self, agent):
+        """
+        Returns the sensory range of the agent based on the agent prefix and its sensory range.
+        """
+        agent_prefix = self.get_agent_id_prefix(agent)
+        agent_config = self.ac_configs.get(agent_prefix, None)
+        return agent_config['detection_range(nm)']
 
     def get_latlon(self, agent):
         """
@@ -1047,9 +1003,6 @@ class MATCEnv(ParallelEnv):
         ownship_nxt_wpt_lat, ownship_nxt_wpt_lon = self.get_latlon_nxt_wpt(ownship)
         # agent distance to the next waypoint
         ownship_distance_to_nxt_wpt = self.distance_to_nxt_wpt(ownship)
-
-        # agent sensory range
-        ownship_sensory_range = self.get_agent_sensory_range(ownship)
         front_intruders = []
 
         for intruder, intruder_obs in observations.items():
@@ -1067,7 +1020,7 @@ class MATCEnv(ParallelEnv):
                 # calculate the distance to the next waypoint for the intruder
                 intruder_distance_to_nxt_wpt = self.distance_to_nxt_wpt(intruder)
                 # find the distance between the ownship and the intruder
-                if intruder_distance_to_nxt_wpt < ownship_distance_to_nxt_wpt and intruder_distance_to_ownship < ownship_sensory_range:
+                if intruder_distance_to_nxt_wpt < ownship_distance_to_nxt_wpt and intruder_distance_to_ownship < self.get_agent_detection_range(ownship):
                     front_intruders.append(intruder)
 
         return front_intruders
@@ -1081,7 +1034,11 @@ class MATCEnv(ParallelEnv):
         """
         front_intruders = self.get_front_intruders(ownship, observations)
         # Order the intruders by their distance to the ownship
-        front_intruders.sort(key=lambda intruder: self.get_2agent_distance(ownship, intruder))
+        # front_intruders.sort(key=lambda intruder: self.get_2agent_distance(ownship, intruder))
+
+        ownship_dist_to_nxt_wpt = self.distance_to_nxt_wpt(ownship)
+        front_intruders.sort(key=lambda intruder: 1/(abs(self.distance_to_nxt_wpt(intruder) - ownship_dist_to_nxt_wpt) + 1e-6))
+        
         return front_intruders
 
     def get_all_intruders(self, ownship, observations):
@@ -1100,10 +1057,6 @@ class MATCEnv(ParallelEnv):
         # get latitude and longitude of the next waypoint for the ownship agent
         ownship_nxt_wpt_lat, ownship_nxt_wpt_lon = self.get_latlon_nxt_wpt(ownship)
         # agent distance to the next waypoint
-        ownship_distance_to_nxt_wpt = self.distance_to_nxt_wpt(ownship)
-
-        # agent sensory range
-        ownship_sensory_range = self.get_agent_sensory_range(ownship)
         all_intruders = []
 
         for intruder, intruder_obs in observations.items():
@@ -1118,10 +1071,8 @@ class MATCEnv(ParallelEnv):
                 intruder_lat, intruder_lon = intruder_obs[0][0], intruder_obs[0][1]
                 # find the distance of the intruder to the ownship
                 intruder_distance_to_ownship = haversine_distance(ownship_lat, ownship_lon, intruder_lat, intruder_lon)
-                # calculate the distance to the next waypoint for the intruder
-                intruder_distance_to_nxt_wpt = self.distance_to_nxt_wpt(intruder)
                 # find the distance between the ownship and the intruder
-                if intruder_distance_to_ownship < ownship_sensory_range:
+                if intruder_distance_to_ownship < self.get_agent_detection_range(ownship):
                     all_intruders.append(intruder)
 
         return all_intruders
@@ -1143,7 +1094,9 @@ class MATCEnv(ParallelEnv):
                 intruder_lat, intruder_lon = intruder_obs[0][0], intruder_obs[0][1]
                 distance = haversine_distance(ownship_lat, ownship_lon, intruder_lat, intruder_lon)
 
-                if distance > 0 and distance < self.safety_distance:
+
+
+                if distance > 0 and distance < self.get_agent_safety_distance(ownship_agent):
                     intruder_distances[intruder_agent] = distance
 
             distances_to_ownship[ownship_agent] = intruder_distances
@@ -1174,7 +1127,7 @@ class MATCEnv(ParallelEnv):
                     closest_intruder = intruder_agent
 
             # Store the closest distance and intruder for the ownship agent
-            if min_distance < self.safety_distance:
+            if min_distance < self.get_agent_safety_distance(ownship_agent):
                 closest_distances[ownship_agent] = {
                     'distance': min_distance,
                     'intruder': closest_intruder
@@ -1186,31 +1139,48 @@ class MATCEnv(ParallelEnv):
                 }
 
         return closest_distances
-    
+        
     def get_max_spd(self, agent):
         """
-        Returns the maximum speed for the agent based on its company.
+        Returns the maximum speed based on the the agent's prefix and the configuration file.
         """
-        agent_company = self.get_agent_company(agent)
-        if agent_company == 'CoA':
-            return self.max_spd_CoA
-        elif agent_company == 'CoB':
-            return self.max_spd_CoB
-        else:
-            return max(self.max_spd_CoA, self.max_spd_CoB)
+        agent_prefix = self.get_agent_id_prefix(agent)
+        agent_config = self.ac_configs.get(agent_prefix, {})
+        return agent_config.get('max_speed(knots)', None)
         
     def get_min_spd(self, agent):
         """
-        Returns the minimum speed for the agent based on its company.
+        Returns the minimum speed based on the the agent's prefix and the configuration file.
         """
-        agent_company = self.get_agent_company(agent)
-        if agent_company == 'CoA':
-            return self.min_spd_CoA
-        elif agent_company == 'CoB':
-            return self.min_spd_CoB
-        else:
-            return min(self.min_spd_CoA, self.min_spd_CoB)
-        
+        agent_prefix = self.get_agent_id_prefix(agent)
+        agent_config = self.ac_configs.get(agent_prefix, {})
+        return agent_config.get('min_speed(knots)', None)
+    
+    def get_spd_increment(self, agent):
+        """
+        Returns the speed increment per second based on the the agent's prefix and the configuration file.
+        """
+        agent_prefix = self.get_agent_id_prefix(agent)
+        agent_config = self.ac_configs.get(agent_prefix, {})
+        return agent_config.get('speed_increment_per_second(knots)', None)
+    
+    def get_agent_desired_spd(self, agent):
+        """
+        Returns the desired speed of the agent based on its prefix.
+        """
+        agent_prefix = self.get_agent_id_prefix(agent)
+        agent_config = self.ac_configs.get(agent_prefix, {})
+        desired_spd = agent_config.get('desired_speed(knots)', None)
+        return desired_spd  
+    
+    def get_route_id(self, agent):
+        """
+        Returns the route ID of the agent based on its prefix.
+        """
+        agent_prefix = self.get_agent_id_prefix(agent)
+        agent_config = self.ac_configs.get(agent_prefix, {})
+        return agent_config.get('route_id', None)
+
     def update_co_action_history(self, agent, action):
         agent_company = self.get_agent_company(agent)
         if agent_company == 'CoA':
@@ -1257,15 +1227,6 @@ class MATCEnv(ParallelEnv):
             if ac_id == -1:
                 print(f"Warning: Agent {agent} not found in the simulation. Something went wrong.")
                 continue
-
-            # Find the company of the agent
-            agent_company = self.get_agent_company(agent)
-            if agent_company == 'CoA':
-                spd_increment = SPD_INCREMENT_COA
-            elif agent_company == 'CoB':
-                spd_increment = SPD_INCREMENT_COB
-            else:
-                spd_increment = SPD_INCREMENT_COA
             
             flight_number = agent
             ac_phase = bs.traf.perf.phase[ac_id]
@@ -1284,13 +1245,14 @@ class MATCEnv(ParallelEnv):
                 continue
 
             # Collect taken actions
-            self.update_co_action_history(agent, action)
+            # self.update_co_action_history(agent, action)
             
             if action != 1:               
                 cur_ac_spd = metric_spd_to_knots_rounded(bs.traf.cas[ac_id])
 
-                new_ac_spd = int(cur_ac_spd) + (action - 1) * spd_increment
+                new_ac_spd = int(cur_ac_spd) + (action - 1) * self.get_spd_increment(agent) * self.dt
                 new_ac_spd = min(max(new_ac_spd, self.get_min_spd(agent)), self.get_max_spd(agent))
+
                 # print(f"Current speed: {cur_ac_spd} New speed: {new_ac_spd}")
                 stack.stack(f'SPD {flight_number} {new_ac_spd}')
                 self.cmd_history.append(f'00:00:{self.get_agent_time(agent):.2f}>SPD {flight_number} {new_ac_spd}')
@@ -1308,7 +1270,7 @@ class MATCEnv(ParallelEnv):
 
         # Get distances to ownship
         self.distances_to_ownship = self.get_closest_distance_to_ownship(observations)
-        self.agent_phases = self.get_operation_phase_agents(observations)
+        # self.agent_phases = self.get_operation_phase_agents(observations)
 
         # Collect rewards before sim step
         previous_step_agents = list(actions.keys())
@@ -1316,12 +1278,12 @@ class MATCEnv(ParallelEnv):
 
         terminations = self.terminated_agents.copy()
         truncations = self.truncated_agents.copy()
-        infos = self.infos(current_step_agents)
+        # infos = self.infos(current_step_agents)
 
         # Update previous actions
         self.previous_actions = actions
         self.previous_speeds = self.current_speeds.copy()
-        self.record_agent_spds_per_episode()
+        # self.record_agent_spds_per_episode()
 
         # Truncate and terminate agents after receiving next observations and rewards
         self.truncate_agents()
@@ -1335,13 +1297,14 @@ class MATCEnv(ParallelEnv):
         self.trunc_agent_list = [agent for agent, truncated in truncations.items() if truncated]
 
         # Take one step in saving the state-action pairs
-        # self.ownship_intruder_info(observations)
+        self.ownship_intruder_info(observations)
+
+        if len(self.all_state_action_pairs) > 0:
+            # print(self.all_state_action_pairs[-1])
+            last_prompt = self.get_ownship_prompt(self.all_state_action_pairs[-1])
+            print(f"Ownship Prompt: {last_prompt}")
 
         # self.draw_circles(observations)
-        # if len(self.all_state_action_pairs) > 0:
-        #     # print(self.all_state_action_pairs[-1])
-        #     last_prompt = self.get_ownship_prompt(self.all_state_action_pairs[-1])
-        #     print(f"Last Prompt: {last_prompt}")
         
         return observations, processed_observations, rewards, terminations, truncations, self.dones
 
@@ -1363,7 +1326,8 @@ class MATCEnv(ParallelEnv):
         acc = observations[agent][0][4] # Acceleration
 
         # print(f"Agent: {agent}, v_x: {v_x}, v_y: {v_y}")
-
+        # print speed, min speed, max speed
+        # print(f"Agent: {agent}, Speed: {spd}, Min Speed: {self.get_min_spd(agent)}, Max Speed: {self.get_max_spd(agent)}")
         # Normalize velocity components
         spd_normalized = normalize(abs(spd), self.get_min_spd(agent), self.get_max_spd(agent))
         hdg_normalized = normalize(hdg, 0, HDG_RANGE)
@@ -1387,7 +1351,7 @@ class MATCEnv(ParallelEnv):
         #     print(f"Agent: {agent}, Distance to next waypoint: {dist_to_nxt_wpt}")
 
         # Normalize distance to next waypoint
-        normalized_distance_to_nxt_wpt = normalize(dist_to_nxt_wpt, 0, MAX_DIST_GOAL)
+        normalized_distance_to_nxt_wpt = normalize(dist_to_nxt_wpt, 0, self.get_agent_detection_range(agent))
 
         # Dangerous zone
         dangerous_zone_flag = observations[agent][0][7]
@@ -1416,8 +1380,7 @@ class MATCEnv(ParallelEnv):
 
             intruder_lat, intruder_lon = obs[0][0], obs[0][1]
             distance = haversine_distance(ownship_lat, ownship_lon, intruder_lat, intruder_lon)
-            sensory_range = self.get_agent_sensory_range(agent)
-            if distance <= sensory_range:
+            if distance <= self.get_agent_detection_range(agent):
                 # Calculate absolute latitude and longitude distances
                 lat_distance = haversine_distance(ownship_lat, ownship_lon, intruder_lat, ownship_lon)
                 lon_distance = haversine_distance(ownship_lat, ownship_lon, ownship_lat, intruder_lon)
@@ -1443,7 +1406,7 @@ class MATCEnv(ParallelEnv):
 
                 # Combine absolute distances with normalized velocity and acceleration
                 intruder_state = np.concatenate([relative_distance, intruder_velocity, intruder_heading, intruder_acceleration, intruder_route])
-                intruder_state_normalized = np.concatenate([relative_distance/sensory_range, normalized_int_vel, normalized_int_acc, normalized_int_hdg, normalized_int_route])
+                intruder_state_normalized = np.concatenate([relative_distance/self.get_agent_detection_range(agent), normalized_int_vel, normalized_int_acc, normalized_int_hdg, normalized_int_route])
 
                 intruders.append(intruder_state_normalized)
 
@@ -1466,7 +1429,6 @@ class MATCEnv(ParallelEnv):
         front_intruders = self.get_front_intruders(ownship, observations)
         all_intruders = self.get_all_intruders(ownship, observations)
         intruders = front_intruders
-        ownship_sensory_range = self.get_agent_sensory_range(ownship)
 
         for agent, obs in observations.items():
             # find the ownship distance to the next waypoint
@@ -1480,7 +1442,7 @@ class MATCEnv(ParallelEnv):
                 # Find distance to the next waypoint for the intruder
                 intruder_dist_to_nxt_wpt = self.distance_to_nxt_wpt(agent)
                 intruder_dist = np.array([intruder_dist_to_nxt_wpt])
-                normalized_intruder_dist = normalize(intruder_dist, 0, MAX_DIST_GOAL)
+                normalized_intruder_dist = normalize(intruder_dist, 0, self.get_agent_detection_range(agent))
 
                 # Calculate absolute latitude and longitude distances
                 lat_distance = haversine_distance(ownship_lat, ownship_lon, intruder_lat, ownship_lon)
@@ -1542,7 +1504,7 @@ class MATCEnv(ParallelEnv):
 
         return processed_states
     
-    def get_rb_actions(self, observations):
+    def get_rb_actions_v1(self, observations):
         """
         This function gets the observation and decide which action to take given some rules.
         Inputs: observations
@@ -1562,7 +1524,9 @@ class MATCEnv(ParallelEnv):
             closest_intruder = closest_intruder_with_distances[ownship_agent]['intruder']
             closest_distance = closest_intruder_with_distances[ownship_agent]['distance']
 
-            if closest_intruder is None or closest_distance > self.safety_distance:
+            # Closest intruder should be the front intruder with closest distance to the next waypoint as the ownship
+
+            if closest_intruder is None or closest_distance > self.get_agent_safety_distance(ownship_agent):
                 # Find the maximum speed for the ownship agent
                 ownship_agent_max_spd = self.get_max_spd(ownship_agent)
                 ownship_agent_spd = self.get_spd(ownship_agent)
@@ -1582,7 +1546,7 @@ class MATCEnv(ParallelEnv):
             
             # If there is an intruder within the safety distance, check if it is ahead
             # If the intruder is ahead, decide to decelerate or accelerate based on the distance
-            if closest_intruder is not None and closest_distance <= self.safety_distance:
+            if closest_intruder is not None and closest_distance <= self.get_agent_safety_distance(ownship_agent):
                 # check if the intruder is ahead
                 if closest_intruder in front_intruders:
                     # Intruder is ahead, decide to decelerate
@@ -1602,7 +1566,7 @@ class MATCEnv(ParallelEnv):
                     intruder_spd = self.get_spd(closest_intruder)
 
                     # random_action = random.choice([0, 2])
-                    if abs(ownship_dist_to_nxt_wpt - intruder_dist_to_nxt_wpt) < 0.1 * self.ownship_collision_dist:
+                    if abs(ownship_dist_to_nxt_wpt - intruder_dist_to_nxt_wpt) < 0.1 * self.get_agent_collision_distance(ownship_agent):
                         # Take 0 or 2 randomly for acceleration/deceleration
                         if ownship_spd > intruder_spd:
                             actions[ownship_agent] = 2  # Accelerate
@@ -1624,19 +1588,13 @@ class MATCEnv(ParallelEnv):
                                                             "ownship randomly chooses to accelerate or decelerate."
                         actions[closest_intruder] = 2 - actions[ownship_agent]  # Take the opposite action
                         reasoning_logs[closest_intruder] = "Taking the opposite action of the ownship to maintain safe distance."
-                    
 
-            # Check speed limits
-            ownship_agent_company = self.get_agent_company(ownship_agent)
-            if ownship_agent_company == 'CoA':
-                ownship_agent_min_spd = self.min_spd_CoA
-                ownship_agent_max_spd = self.max_spd_CoA
-            elif ownship_agent_company == 'CoB':    
-                ownship_agent_min_spd = self.min_spd_CoB
-                ownship_agent_max_spd = self.max_spd_CoB
-            else:   
-                ownship_agent_min_spd = min(self.min_spd_CoA, self.min_spd_CoB)
-                ownship_agent_max_spd = max(self.max_spd_CoA, self.max_spd_CoB)
+            ownship_id_prefix = self.get_agent_id_prefix(ownship_agent)
+            ownship_config = self.ac_configs.get(ownship_id_prefix, {})
+            ownship_agent_min_spd = ownship_config.get('min_speed(knots)', None)
+            ownship_agent_min_spd = metric_spd_to_knots_rounded(ownship_agent_min_spd)
+            ownship_agent_max_spd = ownship_config.get('max_speed(knots)', None)
+            ownship_agent_max_spd = metric_spd_to_knots_rounded(ownship_agent_max_spd)
 
             ownship_agent_spd = self.get_spd(ownship_agent)
             cond1 = (ownship_agent_spd <= ownship_agent_min_spd and actions[ownship_agent] == 0)
@@ -1644,9 +1602,147 @@ class MATCEnv(ParallelEnv):
             if cond1 or cond2:
                 actions[ownship_agent] = 1  # Maintain current speed
                 reasoning_logs[ownship_agent] = "The decided action would violate speed limits. Maintain current speed instead."
-            
-        return actions
+
+        return actions, reasoning_logs
     
+        
+    def get_rb_actions(self, observations):
+        """
+        This function gets the observation and decide which action to take given some rules.
+        Inputs: observations
+        Outputs: actions
+        """
+        closest_intruder_with_distances = self.get_closest_distance_to_ownship(observations)
+
+        actions = {}
+        reasoning_logs = {}
+        for ownship_agent, ownship_obs in observations.items():
+
+            # If actions[ownship_agent] is already defined, skip to the next agent
+            if ownship_agent in actions.keys():
+                continue
+
+            ownship_dist_to_nxt_wpt = self.distance_to_nxt_wpt(ownship_agent)
+
+            if ownship_dist_to_nxt_wpt > self.get_agent_safety_distance(ownship_agent):
+                flag = "far_from_waypoint"
+                closest_intruder = closest_intruder_with_distances[ownship_agent]['intruder']
+                closest_distance = closest_intruder_with_distances[ownship_agent]['distance']
+
+                # Closest intruder should be the front intruder with closest distance to the next waypoint as the ownship
+                if closest_intruder is None or closest_distance > self.get_agent_safety_distance(ownship_agent):
+                    # Find the maximum speed for the ownship agent
+                    ownship_agent_max_spd = self.get_max_spd(ownship_agent)
+                    ownship_agent_spd = self.get_spd(ownship_agent)
+                    # If the ownship agent is below the maximum speed, accelerate
+                    if ownship_agent_spd < self.get_agent_desired_spd(ownship_agent):
+                        actions[ownship_agent] = 2
+                        reasoning_logs[ownship_agent] = "There is no intruder ahead within the safety distance. " + \
+                        "Since the current speed is low, accelerate to reach desired speed, helping to avoid occlusion."
+                    else:
+                        actions[ownship_agent] = 1
+                        reasoning_logs[ownship_agent] = "There is no intruder ahead within the safety distance. " + \
+                        "Since the current speed is high, maintain current speed."
+                    continue
+
+                # Find intruders that are ahead of the ownship
+                front_intruders = self.get_front_intruders(ownship_agent, observations)
+                
+                # If there is an intruder within the safety distance, check if it is ahead
+                # If the intruder is ahead, decide to decelerate or accelerate based on the distance
+                if closest_intruder is not None and closest_distance <= self.get_agent_safety_distance(ownship_agent):
+                    # check if the intruder is ahead
+                    if closest_intruder in front_intruders:
+                        # Intruder is ahead, decide to decelerate
+                        actions[ownship_agent] = 0
+                        reasoning_logs[ownship_agent] = "Within the unsafe zone around the ownship, the closest intruder is ahead of the ownship. Decelerate to avoid collision."
+                    else:
+                        # Intruder is behind, decide to accelerate
+                        actions[ownship_agent] = 2
+                        reasoning_logs[ownship_agent] = "Within the unsafe zone around the ownship, the closest intruder is behind the ownship. Accelerate to maintain distance."
+
+                ownship_id_prefix = self.get_agent_id_prefix(ownship_agent)
+                ownship_config = self.ac_configs.get(ownship_id_prefix, {})
+                ownship_agent_min_spd = ownship_config.get('min_speed(knots)', None)
+                ownship_agent_min_spd = metric_spd_to_knots_rounded(ownship_agent_min_spd)
+                ownship_agent_max_spd = ownship_config.get('max_speed(knots)', None)
+                ownship_agent_max_spd = metric_spd_to_knots_rounded(ownship_agent_max_spd)
+
+                ownship_agent_spd = self.get_spd(ownship_agent)
+                cond1 = (ownship_agent_spd <= ownship_agent_min_spd and actions[ownship_agent] == 0)
+                cond2 = (ownship_agent_spd >= ownship_agent_max_spd and actions[ownship_agent] == 2)
+                if cond1 or cond2:
+                    actions[ownship_agent] = 1  # Maintain current speed
+                    reasoning_logs[ownship_agent] = "The decided action would violate speed limits. Maintain current speed instead."
+            else:
+                flag = "near_waypoint"
+                # Find intruders that are ahead of the ownship
+                front_intruders = self.get_front_intruders_ordered(ownship_agent, observations)
+
+                if len(front_intruders) > 0:
+                    closest_intruder = front_intruders[0]
+                    closest_distance = abs(ownship_dist_to_nxt_wpt - self.distance_to_nxt_wpt(closest_intruder))
+                else:
+                    closest_intruder = None
+                    closest_distance = float('inf')
+
+                if closest_intruder is not None:
+
+                    if self.check_2agents_on_same_route(ownship_agent, closest_intruder):
+                        actions[ownship_agent] = 0
+                        reasoning_logs[ownship_agent] = "The ownship is near the waypoint, and there is an intruder ahead " + \
+                        "within the safety distance and on the same route. Decelerate to avoid collision while approaching the waypoint."
+                    else:
+                        actions[ownship_agent] = 0
+                        reasoning_logs[ownship_agent] = "The ownship is near the waypoint, and there is an intruder ahead " + \
+                        "within the safety distance and on a different route. Decelerate to avoid collision while approaching the waypoint."
+
+                        ownship_spd =  self.get_spd(ownship_agent)
+                        intruder_spd = self.get_spd(closest_intruder)
+
+                        if closest_distance < self.get_agent_collision_distance(ownship_agent):
+                            # Take 0 or 2 randomly for acceleration/deceleration
+                            if ownship_spd > intruder_spd:
+                                actions[ownship_agent] = 2  # Accelerate
+                                reasoning_logs[ownship_agent] = "Within the unsafe zone around the ownship, " + \
+                                                                "the closest intruder distance to the next waypoint is nearly equal to that of the ownship, " + \
+                                                                "and the ownship speed is higher than the intruder speed, " + \
+                                                                "ownship should accelerate since it has a speed advantage."
+                            elif ownship_spd < intruder_spd:
+                                actions[ownship_agent] = 0  # Decelerate
+                                reasoning_logs[ownship_agent] = "Within the unsafe zone around the ownship, " + \
+                                                                "the closest intruder distance to the next waypoint is nearly equal to that of the ownship, " + \
+                                                                "and the ownship speed is lower than the intruder speed, " + \
+                                                                "ownship should decelerate since it has a speed disadvantage."
+                            else:
+                                actions[ownship_agent] = random.choice([0, 2])
+                                reasoning_logs[ownship_agent] = "Within the unsafe zone around the ownship, " + \
+                                                                "the closest intruder distance to the next waypoint is nearly equal to that of the ownship, " + \
+                                                                "and both ownship and intruder have the same speed. " + \
+                                                                "ownship randomly chooses to accelerate or decelerate."
+                        
+                            actions[closest_intruder] = 2 - actions[ownship_agent]  # Take the opposite action
+                            reasoning_logs[closest_intruder] = "Taking the opposite action of the ownship to maintain safe distance."
+                else:
+                    actions[ownship_agent] = 2
+                    reasoning_logs[ownship_agent] = "The ownship is near the waypoint, and there is no intruder ahead within the safety distance. Accelerate to reach the waypoint faster."
+
+                ownship_id_prefix = self.get_agent_id_prefix(ownship_agent)
+                ownship_config = self.ac_configs.get(ownship_id_prefix, {})
+                ownship_agent_min_spd = ownship_config.get('min_speed(knots)', None)
+                ownship_agent_min_spd = metric_spd_to_knots_rounded(ownship_agent_min_spd)
+                ownship_agent_max_spd = ownship_config.get('max_speed(knots)', None)
+                ownship_agent_max_spd = metric_spd_to_knots_rounded(ownship_agent_max_spd)
+
+                ownship_agent_spd = self.get_spd(ownship_agent)
+                cond1 = (ownship_agent_spd <= ownship_agent_min_spd and actions[ownship_agent] == 0)
+                cond2 = (ownship_agent_spd >= ownship_agent_max_spd and actions[ownship_agent] == 2)
+                if cond1 or cond2:
+                    actions[ownship_agent] = 1  # Maintain current speed
+                    reasoning_logs[ownship_agent] = "The decided action would violate speed limits. Maintain current speed instead."
+
+        return actions, reasoning_logs
+
     def get_2agent_distance(self, agent1, agent2):
         """
         Returns the distance between two agents.
@@ -1678,6 +1774,25 @@ class MATCEnv(ParallelEnv):
             return 2
         else:
             return 1
+        
+    def check_2agents_on_same_route(self, agent1, agent2):
+        """
+        Returns True if the previous and next waypoints of the two agents are the same.
+        """
+        agent1_nxt_wpt = self.get_nxt_wpt_id(agent1)
+        agent1_prvs_wpt = self.get_prvs_wpt_id(agent1)
+        agent2_nxt_wpt = self.get_nxt_wpt_id(agent2)
+        agent2_prvs_wpt = self.get_prvs_wpt_id(agent2)
+
+        return agent1_nxt_wpt == agent2_nxt_wpt and agent1_prvs_wpt == agent2_prvs_wpt
+    
+    def get_agent_type(self, agent):
+        """
+        Returns the type of the agent based on its prefix.
+        """
+        agent_id_prefix = self.get_agent_id_prefix(agent)
+        agent_config = self.ac_configs.get(agent_id_prefix, {})
+        return agent_config.get('type', None)
 
     def get_agent_info(self, agent, intruders, agent_flag='ownship'):
         """
@@ -1696,40 +1811,42 @@ class MATCEnv(ParallelEnv):
         agent_info = {}
         agent_obs = self.observation(agent)
         agent_info["agent_id"] = agent
-        agent_info["ac_type"] = "Amazon" if agent.startswith("AA") or agent.startswith("AC") else "Xwing"
+        agent_info["ac_type"] = self.get_agent_type(agent)
         agent_lat, agent_lon = self.get_latlon(agent)
         agent_lat = float(f"{agent_lat:.6f}")
         agent_lon = float(f"{agent_lon:.6f}")
         agent_info["ac_lat"], agent_info["ac_lon"] = agent_lat, agent_lon
         agent_info["next_wpt_id"] = self.get_nxt_wpt_id(agent)
         agent_info["next_wpt_type"] = self.get_nxt_wpt_type(agent)
-        ac_dist_to_nxt_wpt = self.distance_to_nxt_wpt(agent)
-        ac_dist_to_nxt_wpt = float(f"{ac_dist_to_nxt_wpt:.4f}")
-        agent_info["ac_dist_to_nxt_wpt(nm)"] = ac_dist_to_nxt_wpt
+        ac_dist_to_nxt_wpt = self.distance_to_nxt_wpt(agent) * 1852  # convert from nautical miles to meters
+        ac_dist_to_nxt_wpt = float(f"{ac_dist_to_nxt_wpt:.2f}")
+        agent_info["ac_dist_to_nxt_wpt(m)"] = ac_dist_to_nxt_wpt
 
-        ac_spd = self.get_spd(agent)
-        ac_spd = float(f"{ac_spd:.4f}")
-        agent_info["speed"] = ac_spd
+        ac_spd = self.get_spd(agent) * 0.514444  # convert from knots to m/s
+        ac_spd = float(f"{ac_spd:.2f}")
+        agent_info["speed(m/s)"] = ac_spd
 
         # agent minimum and maximum speed
-        ac_min_spd = self.get_min_spd(agent)
-        ac_min_spd = float(f"{ac_min_spd:.4f}")
-        ac_max_spd = self.get_max_spd(agent)
-        ac_max_spd = float(f"{ac_max_spd:.4f}")
-        agent_info["ac_min_spd(knots)"] = ac_min_spd
-        agent_info["ac_max_spd(knots)"] = ac_max_spd
+        ac_min_spd = self.get_min_spd(agent) * 0.514444  # convert from knots to m/s
+        ac_min_spd = float(f"{ac_min_spd:.2f}")
+        ac_max_spd = self.get_max_spd(agent) * 0.514444  # convert from knots to m/s
+        ac_max_spd = float(f"{ac_max_spd:.2f}")
+        agent_info["ac_min_spd(m/s)"] = ac_min_spd
+        agent_info["ac_max_spd(m/s)"] = ac_max_spd
 
-        ac_acc = self.get_acc(agent)
-        ac_acc = float(f"{ac_acc:.6f}")
-        agent_info["acceleration(knot/s)"] = ac_acc
+        ac_acc = self.get_spd_increment(agent) * 0.514444  # convert from knots to m/s
+        ac_acc = float(f"{ac_acc:.2f}")
+        agent_info["speed_change_per_second(m/s2)"] = ac_acc
         
         ac_hdg = agent_obs[0][3]
-        ac_hdg = float(f"{ac_hdg:.4f}")
+        ac_hdg = float(f"{ac_hdg:.2f}")
         agent_info["heading(deg)"] = ac_hdg
 
-        ac_alt = self.get_alt(agent)
-        ac_alt = float(f"{ac_alt:.3f}")
-        agent_info["altitude(ft)"] = ac_alt
+        agent_info["heading_scale"] = "{North=0, East=90, South=180, West=270}"
+
+        ac_alt = self.get_alt(agent) / 3.28084
+        ac_alt = float(f"{ac_alt:.2f}")
+        agent_info["altitude(m)"] = ac_alt
 
         # Get route id
         agent_info["ac_route_id"] = f'R_{self.agent_route_ids[agent]}'
@@ -1746,57 +1863,43 @@ class MATCEnv(ParallelEnv):
             # Check if the agent and the first intruder are on a similar route
             if len(intruders) == 1:
                 first_intruder = intruders[0]
-                ownship_nxt_wpt = self.get_nxt_wpt_id(agent)
-                intruder_nxt_wpt = self.get_nxt_wpt_id(first_intruder)
-                ownship_prvs_wpt = self.get_prvs_wpt_id(agent)
-                intruder_prvs_wpt = self.get_prvs_wpt_id(first_intruder)
-                ownship_route_id = self.agent_route_ids[agent]
-                intruder_route_id = self.agent_route_ids[first_intruder]
 
-                if ownship_nxt_wpt == intruder_nxt_wpt and ownship_prvs_wpt == intruder_prvs_wpt and ownship_route_id == intruder_route_id:
+                if self.check_2agents_on_same_route(agent, first_intruder):
                     agent_info["intruder1_on_same_route"] = True
                 else:
                     agent_info["intruder1_on_same_route"] = False
                 
                 agent_info["intruder2_on_same_route"] = None
 
-                agent_info["distance_to_intruder1(nm)"] = float(f"{self.get_2agent_distance(agent, first_intruder):.4f}")
-                agent_info["distance_to_intruder2(nm)"] = None
+                ownship_to_intruder1_distance = self.get_2agent_distance(agent, first_intruder) * 1852  # convert from nautical miles to meters
+                agent_info["distance_to_intruder1(m)"] = float(f"{ownship_to_intruder1_distance:.2f}")
+                agent_info["distance_to_intruder2(m)"] = None
                 
             elif len(intruders) == 2:
                 first_intruder = intruders[0]
-                ownship_nxt_wpt = self.get_nxt_wpt_id(agent)
-                intruder_nxt_wpt = self.get_nxt_wpt_id(first_intruder)
-                ownship_prvs_wpt = self.get_prvs_wpt_id(agent)
-                intruder_prvs_wpt = self.get_prvs_wpt_id(first_intruder)
-                ownship_route_id = self.agent_route_ids[agent]
-                intruder_route_id = self.agent_route_ids[first_intruder]
 
-                if ownship_nxt_wpt == intruder_nxt_wpt and ownship_prvs_wpt == intruder_prvs_wpt and ownship_route_id == intruder_route_id:
+                if self.check_2agents_on_same_route(agent, first_intruder):
                     agent_info["intruder1_on_same_route"] = True
                 else:
                     agent_info["intruder1_on_same_route"] = False
 
                 second_intruder = intruders[1]
-                ownship_nxt_wpt = self.get_nxt_wpt_id(agent)
-                intruder_nxt_wpt = self.get_nxt_wpt_id(second_intruder)
-                ownship_prvs_wpt = self.get_prvs_wpt_id(agent)
-                intruder_prvs_wpt = self.get_prvs_wpt_id(second_intruder)
-                ownship_route_id = self.agent_route_ids[agent]
-                intruder_route_id = self.agent_route_ids[second_intruder]
 
-                if ownship_nxt_wpt == intruder_nxt_wpt and ownship_prvs_wpt == intruder_prvs_wpt and ownship_route_id == intruder_route_id:
+                if self.check_2agents_on_same_route(agent, second_intruder):
                     agent_info["intruder2_on_same_route"] = True
                 else:
                     agent_info["intruder2_on_same_route"] = False
 
-                agent_info["distance_to_intruder1(nm)"] = float(f"{self.get_2agent_distance(agent, first_intruder):.4f}")
-                agent_info["distance_to_intruder2(nm)"] = float(f"{self.get_2agent_distance(agent, second_intruder):.4f}")
+                ownship_to_intruder1_distance = self.get_2agent_distance(agent, first_intruder) * 1852  # convert from nautical miles to meters
+                ownship_to_intruder2_distance = self.get_2agent_distance(agent, second_intruder) * 1852  # convert from nautical miles to meters
+
+                agent_info["distance_to_intruder1(m)"] = float(f"{ownship_to_intruder1_distance:.2f}")
+                agent_info["distance_to_intruder2(m)"] = float(f"{ownship_to_intruder2_distance:.2f}")
             else:
                 agent_info["intruder1_on_same_route"] = None
                 agent_info["intruder2_on_same_route"] = None
-                agent_info["distance_to_intruder1(nm)"] = None
-                agent_info["distance_to_intruder2(nm)"] = None
+                agent_info["distance_to_intruder1(m)"] = None
+                agent_info["distance_to_intruder2(m)"] = None
 
         return agent_info
 
@@ -1805,7 +1908,7 @@ class MATCEnv(ParallelEnv):
         Returns a list of dictionaries with information about the ownship and the first two intruders.
         """
 
-        Actions = self.get_rb_actions(observations)
+        Actions, Reasons = self.get_rb_actions(observations)
 
         self.step_state_action_pairs = []
         
@@ -1831,7 +1934,8 @@ class MATCEnv(ParallelEnv):
             elif len(intruders_info) == 1:
                 intruders_info = [intruders_info[0], []]
             # ownship_info = [ownship_info, intruders_info[0], intruders_info[1]]
-            state_action_pair = {"ownship_info": ownship_info, "first_closest_front_intruder_info": intruders_info[0], "second_closest_front_intruder_info": intruders_info[1], "ownship_action": rule_action}
+            state_action_pair = {"ownship_info": ownship_info, "first_closest_front_intruder_info": intruders_info[0], 
+                                 "second_closest_front_intruder_info": intruders_info[1], "ownship_action": rule_action}
             self.step_state_action_pairs.append(state_action_pair)
             self.all_state_action_pairs.append(state_action_pair)
 
@@ -1844,67 +1948,92 @@ class MATCEnv(ParallelEnv):
         second_intruder_info = ownship_intruder_info['second_closest_front_intruder_info']
         ownship_action = ownship_intruder_info['ownship_action']
 
-        prompt = "*** You are an airspace deconfliction assistant. " + \
-                "Your task is to help the ownship avoid collisions with front intruder aircraft by suggesting appropriate speed adjustments. " + \
-                "Based on the following information about the ownship and its intruders, recommend whether the ownship should 'Accelerate', 'Decelerate', or 'Hold' " + \
+        prompt = "You are an airspace tactical deconfliction assistant. " + \
+                "Your task is to help the ownship aircraft avoid collisions with front intruder aircraft by suggesting appropriate speed adjustments. " + \
+                "This task is a safety-critical task, requiring careful consideration of the situation. " + \
+                "Front intruders are aircraft that are ahead of the ownship and closer to the next waypoint, no matter on the same route or a different route. " + \
+                f"At each time step, the ownship can choose one of the following actions: 'Accelerate' (increase speed by {ownship_info['speed_change_per_second(m/s2)']} m/s per second), " + \
+                f"'Decelerate' (decrease speed by -{ownship_info['speed_change_per_second(m/s2)']} m/s per second), or 'Hold' its current speed. " + \
+                f"The simulation time step is {self.dt} seconds. \n" + \
+                "Based on the following information about the ownship and its intruders, recommend one action to adjust " + \
                 "its current speed to maintain safe separation. \nHere is the ownship information: \n"
 
-        prompt += f"Ownship ID: {ownship_info['agent_id']}, "
-        prompt += f"Type: {ownship_info['ac_type']}, "
-        prompt += f"Latitude: {ownship_info['ac_lat']}, Longitude: {ownship_info['ac_lon']}, "
-        prompt += f"Next Waypoint ID: {ownship_info['next_wpt_id']}, Type: {ownship_info['next_wpt_type']}, "
-        prompt += f"Distance to Next Waypoint (nm): {ownship_info['ac_dist_to_nxt_wpt(nm)']}, "
-        prompt += f"Speed (knots): {ownship_info['speed']}, "
-        prompt += f"Acceleration (knot/s): {ownship_info['acceleration(knot/s)']}, "
-        prompt += f"Heading (deg): {ownship_info['heading(deg)']}, "
-        prompt += f"Altitude (ft): {ownship_info['altitude(ft)']}, "
-        prompt += f"Route ID: {ownship_info['ac_route_id']}, "
+        # prompt += f"Ownship ID: {ownship_info['agent_id']}, "
+        prompt += f"Aircraft Type: {ownship_info['ac_type']}, "
+        # prompt += f"Latitude: {ownship_info['ac_lat']}, Longitude: {ownship_info['ac_lon']}, "
+        prompt += f"Next Waypoint ID: {ownship_info['next_wpt_id']}, Next Waypoint Type: {ownship_info['next_wpt_type']}, "
+        prompt += f"Distance to Next Waypoint (m): {ownship_info['ac_dist_to_nxt_wpt(m)']}, "
+        prompt += f"Speed (m/s): {ownship_info['speed(m/s)']}, "
+        prompt += f"Speed Range (m/s): [{ownship_info['ac_min_spd(m/s)']}, {ownship_info['ac_max_spd(m/s)']}], "
+        prompt += f"Speed Change per Second (m/s²): {ownship_info['speed_change_per_second(m/s2)']}, "
+        # prompt += f"Acceleration (knot/s): {ownship_info['acceleration(knot/s)']}, "
+        prompt += f"Heading (deg): {ownship_info['heading(deg)']} with heading scale {ownship_info['heading_scale']}, "
+        # prompt += f"Altitude (ft): {ownship_info['altitude(ft)']}, "
+        # prompt += f"Route ID: {ownship_info['ac_route_id']}, "
         prompt += f"Last Action: {ownship_info['ac_last_action']}, "
-        prompt += f"Number of Intruders Ahead: {ownship_info['num_intruders_ahead']}. \n"
-
+        
+        safety_distance = self.get_agent_safety_distance(ownship_info['agent_id']) * 1852  # convert from nautical miles to meters
+        ownship_collision_dist = self.get_agent_collision_distance(ownship_info['agent_id']) * 1852  # convert from nautical miles to meters
+        prompt += f"The safety distance to maintain from intruders is {safety_distance:.2f} (m), which is a safe boundary around the ownship when there is no intruder within it. "
+        prompt += f"The near mid-air collision distance is {ownship_collision_dist:.2f} (m), which is the most critical distance between the ownship and the intruder. \n"
+        prompt += "Here are the intruder details: \n"
+        prompt += f"Number of Intruders Ahead: {ownship_info['num_intruders_ahead']}. "
         if ownship_info['num_intruders_ahead'] == 1:
-            prompt += "Here is the first closest front intruder information: \n"
-            prompt += f"Intruder ID: {first_intruder_info['agent_id']}, "
+            prompt += "The first closest front intruder information: \n"
+            # prompt += f"Intruder ID: {first_intruder_info['agent_id']}, "
             prompt += f"Type: {first_intruder_info['ac_type']}, "
-            prompt += f"Latitude: {first_intruder_info['ac_lat']}, Longitude: {first_intruder_info['ac_lon']}, "
-            prompt += f"Next Waypoint ID: {first_intruder_info['next_wpt_id']}, Type: {first_intruder_info['next_wpt_type']}, "
-            prompt += f"Distance to Next Waypoint (nm): {first_intruder_info['ac_dist_to_nxt_wpt(nm)']}, "
-            prompt += f"Speed (knots): {first_intruder_info['speed']}, "
-            prompt += f"Acceleration (knot/s): {first_intruder_info['acceleration(knot/s)']}, "
+            # prompt += f"Latitude: {first_intruder_info['ac_lat']}, Longitude: {first_intruder_info['ac_lon']}, "
+            prompt += f"Next Waypoint ID: {first_intruder_info['next_wpt_id']}, Next Waypoint Type: {first_intruder_info['next_wpt_type']}, "
+            prompt += f"Distance to Next Waypoint (m): {first_intruder_info['ac_dist_to_nxt_wpt(m)']}, "
+            prompt += f"Speed (m/s): {first_intruder_info['speed(m/s)']}, "
+            # prompt += f"Acceleration (knot/s): {first_intruder_info['acceleration(knot/s)']}, "
             prompt += f"Heading (deg): {first_intruder_info['heading(deg)']}, "
-            prompt += f"Altitude (ft): {first_intruder_info['altitude(ft)']}, "
-            prompt += f"Route ID: {first_intruder_info['ac_route_id']}, "
-            prompt += f"Are the routes same? {ownship_info['intruder1_on_same_route']}, "
-            prompt += f"Distance to the ownship (nm): {ownship_info['distance_to_intruder1(nm)']}. \n"
+            # prompt += f"Altitude (ft): {first_intruder_info['altitude(m)']}, "
+            # prompt += f"Route ID: {first_intruder_info['ac_route_id']}, "
+            prompt += f"Distance to the ownship (m): {ownship_info['distance_to_intruder1(m)']}. "
+            if ownship_info['intruder1_on_same_route']:
+                prompt += "The first intruder and the ownship are on the same route. \n"
+            else:
+                prompt += "The first intruder and the ownship are not on the same route. \n"
+            
         elif ownship_info['num_intruders_ahead'] == 2:
-            prompt += "Here is the first closest front intruder information: \n"
-            prompt += f"Intruder ID: {first_intruder_info['agent_id']}, "
+            prompt += "The first closest front intruder information: \n"
+            # prompt += f"Intruder ID: {first_intruder_info['agent_id']}, "
             prompt += f"Type: {first_intruder_info['ac_type']}, "
-            prompt += f"Latitude: {first_intruder_info['ac_lat']}, Longitude: {first_intruder_info['ac_lon']}, "
-            prompt += f"Next Waypoint ID: {first_intruder_info['next_wpt_id']}, Type: {first_intruder_info['next_wpt_type']}, "
-            prompt += f"Distance to Next Waypoint (nm): {first_intruder_info['ac_dist_to_nxt_wpt(nm)']}, "
-            prompt += f"Speed (knots): {first_intruder_info['speed']}, "
-            prompt += f"Acceleration (knot/s): {first_intruder_info['acceleration(knot/s)']}, "
+            # prompt += f"Latitude: {first_intruder_info['ac_lat']}, Longitude: {first_intruder_info['ac_lon']}, "
+            prompt += f"Next Waypoint ID: {first_intruder_info['next_wpt_id']}, Next Waypoint Type: {first_intruder_info['next_wpt_type']}, "
+            prompt += f"Distance to Next Waypoint (m): {first_intruder_info['ac_dist_to_nxt_wpt(m)']}, "
+            prompt += f"Speed (m/s): {first_intruder_info['speed(m/s)']}, "
+            # prompt += f"Acceleration (knot/s): {first_intruder_info['acceleration(knot/s)']}, "
             prompt += f"Heading (deg): {first_intruder_info['heading(deg)']}, "
-            prompt += f"Altitude (ft): {first_intruder_info['altitude(ft)']}, "
-            prompt += f"Route ID: {first_intruder_info['ac_route_id']}, "
-            prompt += f"Are the routes same? {ownship_info['intruder1_on_same_route']}, "
-            prompt += f"Distance to the ownship (nm): {ownship_info['distance_to_intruder1(nm)']}. \n"
-            prompt += "Here is the second closest front intruder information: \n"
-            prompt += f"Intruder ID: {second_intruder_info['agent_id']}, "
+            # prompt += f"Altitude (ft): {first_intruder_info['altitude(m)']}, "
+            # prompt += f"Route ID: {first_intruder_info['ac_route_id']}, "
+            prompt += f"Distance to the ownship (m): {ownship_info['distance_to_intruder1(m)']}. "
+            if ownship_info['intruder1_on_same_route']:
+                prompt += "The first intruder and the ownship are on the same route. \n"
+            else:
+                prompt += "The first intruder and the ownship are not on the same route. \n"
+            # prompt += f"Are the first intruder and the ownship on the same route? {ownship_info['intruder1_on_same_route']}. \n"
+            
+            prompt += "Tthe second closest front intruder information: \n"
+            # prompt += f"Intruder ID: {second_intruder_info['agent_id']}, "
             prompt += f"Type: {second_intruder_info['ac_type']}, "
-            prompt += f"Latitude: {second_intruder_info['ac_lat']}, Longitude: {second_intruder_info['ac_lon']}, "
-            prompt += f"Next Waypoint ID: {second_intruder_info['next_wpt_id']}, Type: {second_intruder_info['next_wpt_type']}, "
-            prompt += f"Distance to Next Waypoint (nm): {second_intruder_info['ac_dist_to_nxt_wpt(nm)']}, "
-            prompt += f"Speed (knots): {second_intruder_info['speed']}, "
-            prompt += f"Acceleration (knot/s): {second_intruder_info['acceleration(knot/s)']}, "
+            # prompt += f"Latitude: {second_intruder_info['ac_lat']}, Longitude: {second_intruder_info['ac_lon']}, "
+            prompt += f"Next Waypoint ID: {second_intruder_info['next_wpt_id']}, Next Waypoint Type: {second_intruder_info['next_wpt_type']}, "
+            prompt += f"Distance to Next Waypoint (m): {second_intruder_info['ac_dist_to_nxt_wpt(m)']}, "
+            prompt += f"Speed (m/s): {second_intruder_info['speed(m/s)']}, "
+            # prompt += f"Acceleration (knot/s): {second_intruder_info['acceleration(knot/s)']}, "
             prompt += f"Heading (deg): {second_intruder_info['heading(deg)']}, "
-            prompt += f"Altitude (ft): {second_intruder_info['altitude(ft)']}, "
-            prompt += f"Route ID: {second_intruder_info['ac_route_id']}, "
-            prompt += f"Are the routes same? {ownship_info['intruder2_on_same_route']}, "
-            prompt += f"Distance to the ownship (nm): {ownship_info['distance_to_intruder2(nm)']}. \n"
-        else:
-            prompt += "There are no front intruders detected, so avoid occlusion. \n"
+            # prompt += f"Altitude (ft): {second_intruder_info['altitude(ft)']}, "
+            # prompt += f"Route ID: {second_intruder_info['ac_route_id']}, "
+            prompt += f"Distance to the ownship (m): {ownship_info['distance_to_intruder2(m)']}. "
+            if ownship_info['intruder2_on_same_route']:
+                prompt += "The second intruder and the ownship are on the same route. \n"
+            else:
+                prompt += "The second intruder and the ownship are not on the same route. \n"
 
-        prompt += f"Based on the above information, what actions should the ownship take? (decelerate/hold/accelerate) \n"
+        else:
+            prompt += "There are no front intruders detected, so try to avoid occlusion. \n"
+
+        prompt += f"Based on the above information, what actions should the ownship take? (Decelerate/Hold/Accelerate) \n"
         return prompt

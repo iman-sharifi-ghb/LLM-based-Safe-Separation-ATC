@@ -27,6 +27,7 @@ class Coordinate:
 @dataclass
 class Waypoint:
     name: str
+    type: str
     coordinate: Coordinate
 
     def __eq__(self, other):
