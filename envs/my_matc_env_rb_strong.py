@@ -871,16 +871,15 @@ class MATCEnv(ParallelEnv):
         """
         Returns the ID prefix of the agent.
         """
-        if agent.startswith('AA'):
-            return 'AA'
-        elif agent.startswith('AB'):
-            return 'AB'
-        elif agent.startswith('AC'):
-            return 'AC'
-        elif agent.startswith('AD'):
-            return 'AD'
-        else:
-            return 'unknown'
+        
+        try:
+            agent_prefix = str(agent).strip()
+            if len(agent_prefix) >= 2:
+                agent_prefix = agent_prefix[:2]
+        except Exception:
+            agent_prefix = 'unknown'
+        
+        return agent_prefix
         
     def get_agent_safety_distance(self, agent):
         """

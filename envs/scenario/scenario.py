@@ -24,7 +24,7 @@ class BaseScenario:
 class ATCScenario(BaseScenario):
 
     def __init__(self, route_file='routes/matc/routes.json'):
-        Root_path = "/Users/imansharifi/Documents/VirtualEnvs/ReinforcementLearning/Code/ATC_LLM/"
+        Root_path = "/Users/alexzongo/Documents/courses/LLM_and_VLM/project/LLM-based-Safe-Separation-ATC/"
         with open(Root_path+route_file, 'r') as f:
             data = json.load(f)
         

@@ -11,4 +11,5 @@ cache/
 *.csv
 BlueSky.py
 settings.cfg
-
+.DS_Store
+*.jsonl

@@ -24,7 +24,7 @@ warnings.filterwarnings("ignore", category=UserWarning, message=".*?.*?")
 
 MAX_NUM_AGENTS = 20
 NUM_INTRUDERS = 3
-NUM_EPISODES = 20
+NUM_EPISODES = 1
 
 # Example usage
 if __name__ == '__main__':
@@ -60,8 +60,8 @@ if __name__ == '__main__':
     numEpisodes = NUM_EPISODES
 
     # Initializing the environment
-    flight_route_file = 'routes/matc/routes_two_companies.json'
-    aircraft_config_file = 'routes/matc/aircraft_configurations.json'
+    flight_route_file = 'routes/matc/auto_airspace_config.json'
+    aircraft_config_file = 'routes/matc/aircraft_configurations_auto.json'
     env = my_matc_env_rb_strong.MATCEnv(flight_route_file, aircraft_config_file, render_mode=RENDER_MODE)
 
     # Company list
@@ -296,7 +296,16 @@ if __name__ == '__main__':
 
     # Save dataset at the end of training
     if len(env.all_state_action_pairs) > 0:
-        with open("raw_ownship_intruders_data_"+DATE+".jsonl", "w") as f:
+        # whether the file exists. if yes append to it else create a new one and write to it
+        file_exists = os.path.isfile("raw_ownship_intruders_data_"+DATE+".jsonl")
+        if file_exists:
+            print("Appending to existing dataset file.")
+            mode = "a"
+        else:
+            print("Creating new dataset file.")
+            mode = "w"
+
+        with open("raw_ownship_intruders_data_"+DATE+".jsonl", mode) as f:
             for record in env.all_state_action_pairs:
                 f.write(json.dumps(record) + "\n")
             

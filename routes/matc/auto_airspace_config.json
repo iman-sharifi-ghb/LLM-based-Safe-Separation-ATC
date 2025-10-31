@@ -10,65 +10,65 @@
   "waypoints": [
     {
       "name": "WP1",
-      "latitude": 33.17951,
-      "longitude": -96.94241,
+      "latitude": 33.22857,
+      "longitude": -96.85462,
       "type": "regular"
     },
     {
       "name": "WP2",
-      "latitude": 33.15351,
-      "longitude": -96.93636,
+      "latitude": 33.21522,
+      "longitude": -96.89986,
       "type": "regular"
     },
     {
       "name": "WP3",
-      "latitude": 33.178868989966894,
-      "longitude": -96.90156860298559
+      "latitude": 33.195776282975196,
+      "longitude": -96.86030014544986
     },
     {
       "name": "WP4",
-      "latitude": 33.1705,
-      "longitude": -96.81085,
+      "latitude": 33.11871,
+      "longitude": -96.84133,
       "type": "regular"
     },
     {
       "name": "WP5",
-      "latitude": 33.102,
-      "longitude": -96.89186,
+      "latitude": 33.16699,
+      "longitude": -96.95521,
       "type": "regular"
     },
     {
       "name": "WP6",
-      "latitude": 33.09176,
-      "longitude": -96.84557,
+      "latitude": 33.13129,
+      "longitude": -96.95488,
       "type": "regular"
     },
     {
       "name": "WP7",
-      "latitude": 33.13266168127714,
-      "longitude": -96.8614457533631
+      "latitude": 33.147049241895445,
+      "longitude": -96.90536709361098
     },
     {
       "name": "WP8",
-      "latitude": 33.20718,
-      "longitude": -96.85628,
+      "latitude": 33.16189,
+      "longitude": -96.81089,
       "type": "regular"
     },
     {
       "name": "WP9",
-      "latitude": 33.1790068836422,
-      "longitude": -96.84607157596749
+      "latitude": 33.14770892269195,
+      "longitude": -96.84340274091907
     },
     {
       "name": "WP10",
-      "latitude": 33.16304,
-      "longitude": -96.94177,
+      "latitude": 33.23124,
+      "longitude": -96.86273,
       "type": "regular"
     },
     {
       "name": "WP11",
-      "latitude": 33.09316,
-      "longitude": -96.86778,
+      "latitude": 33.14914,
+      "longitude": -96.95787,
       "type": "regular"
     }
   ],
@@ -186,10 +186,10 @@
         "AB"
       ],
       "aircraft": [
-        "Amzn"
+        "Xwing"
       ],
       "aircraft_color": [
-        "CYAN"
+        "MAGENTA"
       ],
       "distribution": [
         {
@@ -510,10 +510,10 @@
         "AE"
       ],
       "aircraft": [
-        "Amzn"
+        "Xwing"
       ],
       "aircraft_color": [
-        "CYAN"
+        "MAGENTA"
       ],
       "distribution": [
         {

@@ -70,6 +70,31 @@ new_waypoints_ref = {
 INITIAL_SPEED = [25]  # m/s
 
 rotor_aircraft_types = ["Amzn", "Xwing"]
+aircraft_config = {
+    "Amzn": {
+        "type": "Amazon Prime Air - MK30 Model",
+        "route_id": 0,
+        "min_speed(knots)": 0.0,
+        "max_speed(knots)": 80.0,
+        "desired_speed(knots)": 65.0,
+        "speed_increment_per_second(knots)": 3.3,
+        "detection_range(nm)": 1.5,
+        "safety_radius(nm)": 0.27,
+        "collision_radius(nm)": 0.027
+    },
+    "Xwing": {
+        "type": "Google X-Wing",
+        "route_id": 0,
+        "min_speed(knots)": 0.0,
+        "max_speed(knots)": 60.0,
+        "desired_speed(knots)": 45.0,
+        "speed_increment_per_second(knots)": 2.0,
+        "detection_range(nm)": 1.2,
+        "safety_radius(nm)": 0.27,
+        "collision_radius(nm)": 0.027
+    }
+}
+
 rotor_aircraft_colors = {"Amzn": "CYAN", "Xwing": "MAGENTA"}
 fixed_wing_aircraft_types = ["B787", "A320"]
 fixed_wing_aircraft_colors = {"B787": "WHITE", "A320": "YELLOW"}
@@ -317,6 +342,28 @@ def build_routes(wps_dict, add_new=False):
 
     return routes, wps_dict
 
+def generate_aircraft_config(out_dir="routes/matc", routes: list = []):
+    configs = {}
+    # route_id = 1
+    for id, route in enumerate(routes):
+        # print(id)
+        flight_prefix = route["flight_prefix"][0]
+        aircraft_cfg = aircraft_config[route["aircraft"][0]]
+        aircraft_cfg_ = aircraft_cfg.copy()
+        aircraft_cfg_['route_id'] = id + 1
+        # print(aircraft_cfg_['route_id'])
+
+        configs[flight_prefix] = aircraft_cfg_
+
+    # ensure output directory exists
+    os.makedirs(out_dir, exist_ok=True)
+
+    outpath = os.path.join(out_dir, "aircraft_configurations_auto.json")
+    with open(outpath, "w") as f:
+        json.dump(configs, f, indent=2)
+    print(f"Wrote {outpath}")
+
+
 # ========================
 # MAIN DRIVER
 # ========================
@@ -344,6 +391,8 @@ def generate_airspace_config(out_dir="routes/matc", add_new=True, scale_range=(0
         "routes": routes
     }
 
+    
+
     # ensure output directory exists
     os.makedirs(out_dir, exist_ok=True)
 
@@ -351,8 +400,10 @@ def generate_airspace_config(out_dir="routes/matc", add_new=True, scale_range=(0
     with open(outpath, "w") as f:
         json.dump(config, f, indent=2)
     print(f"Wrote {outpath}")
-    return outpath
+    return outpath, routes
 
 
 if __name__ == "__main__":
-    generate_airspace_config()
+    _, routes = generate_airspace_config()
+
+    generate_aircraft_config(routes=routes)
