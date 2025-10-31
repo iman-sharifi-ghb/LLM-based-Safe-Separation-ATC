@@ -12,5 +12,5 @@ cache/
 BlueSky.py
 settings.cfg
 .DS_Store
-*.jsonl
+# *.jsonl
 LLM_models/
