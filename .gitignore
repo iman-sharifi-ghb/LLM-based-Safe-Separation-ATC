@@ -13,3 +13,4 @@ BlueSky.py
 settings.cfg
 .DS_Store
 *.jsonl
+LLM_models/
