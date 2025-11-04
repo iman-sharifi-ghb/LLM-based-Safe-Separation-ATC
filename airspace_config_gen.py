@@ -67,7 +67,7 @@ new_waypoints_ref = {
     "WP12": "WP9"
 }
 
-INITIAL_SPEED = [25]  # m/s
+INITIAL_SPEED = [20, 25, 30, 35, 40]  # m/s
 
 rotor_aircraft_types = ["Amzn", "Xwing"]
 aircraft_config = {

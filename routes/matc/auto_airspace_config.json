@@ -10,65 +10,65 @@
   "waypoints": [
     {
       "name": "WP1",
-      "latitude": 33.22857,
-      "longitude": -96.85462,
+      "latitude": 33.10129,
+      "longitude": -96.9139,
       "type": "regular"
     },
     {
       "name": "WP2",
-      "latitude": 33.21522,
-      "longitude": -96.89986,
+      "latitude": 33.10318,
+      "longitude": -96.86385,
       "type": "regular"
     },
     {
       "name": "WP3",
-      "latitude": 33.195776282975196,
-      "longitude": -96.86030014544986
+      "latitude": 33.13369566451543,
+      "longitude": -96.90227858388823
     },
     {
       "name": "WP4",
-      "latitude": 33.11871,
-      "longitude": -96.84133,
+      "latitude": 33.22063,
+      "longitude": -96.86265,
       "type": "regular"
     },
     {
       "name": "WP5",
-      "latitude": 33.16699,
-      "longitude": -96.95521,
+      "latitude": 33.1292,
+      "longitude": -96.78034,
       "type": "regular"
     },
     {
       "name": "WP6",
-      "latitude": 33.13129,
-      "longitude": -96.95488,
+      "latitude": 33.17115,
+      "longitude": -96.76785,
       "type": "regular"
     },
     {
       "name": "WP7",
-      "latitude": 33.147049241895445,
-      "longitude": -96.90536709361098
+      "latitude": 33.1635633699107,
+      "longitude": -96.82011072415285
     },
     {
       "name": "WP8",
-      "latitude": 33.16189,
-      "longitude": -96.81089,
+      "latitude": 33.19539,
+      "longitude": -96.92887,
       "type": "regular"
     },
     {
       "name": "WP9",
-      "latitude": 33.14770892269195,
-      "longitude": -96.84340274091907
+      "latitude": 33.193265175895164,
+      "longitude": -96.88669211792251
     },
     {
       "name": "WP10",
-      "latitude": 33.23124,
-      "longitude": -96.86273,
+      "latitude": 33.09452,
+      "longitude": -96.8918,
       "type": "regular"
     },
     {
       "name": "WP11",
-      "latitude": 33.14914,
-      "longitude": -96.95787,
+      "latitude": 33.14995,
+      "longitude": -96.76584,
       "type": "regular"
     }
   ],
@@ -149,32 +149,32 @@
       },
       "end_waypoint_2": {
         "name": "WP1",
-        "speed": 25,
+        "speed": 20,
         "end": false
       },
       "possible_paths": [
         [
           {
             "name": "WP1",
-            "speed": 25,
+            "speed": 20,
             "altitude": "FL150",
             "end": false
           },
           {
             "name": "WP3",
-            "speed": 25,
+            "speed": 20,
             "altitude": "FL150",
             "end": false
           },
           {
             "name": "WP9",
-            "speed": 25,
+            "speed": 20,
             "altitude": "FL150",
             "end": false
           },
           {
             "name": "WP4",
-            "speed": 25,
+            "speed": 20,
             "altitude": "FL150",
             "end": false
           }
@@ -252,12 +252,12 @@
       ],
       "end_waypoint_1": {
         "name": "WP4",
-        "speed": 25,
+        "speed": 30,
         "end": false
       },
       "end_waypoint_2": {
         "name": "WP2",
-        "speed": 25,
+        "speed": 30,
         "end": false
       },
       "possible_paths": [
@@ -294,10 +294,10 @@
         "AC"
       ],
       "aircraft": [
-        "Xwing"
+        "Amzn"
       ],
       "aircraft_color": [
-        "MAGENTA"
+        "CYAN"
       ],
       "distribution": [
         {
@@ -360,12 +360,12 @@
       ],
       "end_waypoint_1": {
         "name": "WP8",
-        "speed": 25,
+        "speed": 30,
         "end": false
       },
       "end_waypoint_2": {
         "name": "WP5",
-        "speed": 25,
+        "speed": 35,
         "end": false
       },
       "possible_paths": [
@@ -468,37 +468,37 @@
       ],
       "end_waypoint_1": {
         "name": "WP8",
-        "speed": 25,
+        "speed": 35,
         "end": false
       },
       "end_waypoint_2": {
         "name": "WP6",
-        "speed": 25,
+        "speed": 35,
         "end": false
       },
       "possible_paths": [
         [
           {
             "name": "WP6",
-            "speed": 25,
+            "speed": 40,
             "altitude": "FL150",
             "end": false
           },
           {
             "name": "WP7",
-            "speed": 25,
+            "speed": 40,
             "altitude": "FL150",
             "end": false
           },
           {
             "name": "WP9",
-            "speed": 25,
+            "speed": 40,
             "altitude": "FL150",
             "end": false
           },
           {
             "name": "WP8",
-            "speed": 25,
+            "speed": 40,
             "altitude": "FL150",
             "end": false
           }
@@ -510,10 +510,10 @@
         "AE"
       ],
       "aircraft": [
-        "Xwing"
+        "Amzn"
       ],
       "aircraft_color": [
-        "MAGENTA"
+        "CYAN"
       ],
       "distribution": [
         {
@@ -576,7 +576,7 @@
       ],
       "end_waypoint_1": {
         "name": "WP4",
-        "speed": 25,
+        "speed": 30,
         "end": false
       },
       "end_waypoint_2": {
@@ -588,25 +588,25 @@
         [
           {
             "name": "WP10",
-            "speed": 25,
+            "speed": 20,
             "altitude": "FL150",
             "end": false
           },
           {
             "name": "WP3",
-            "speed": 25,
+            "speed": 20,
             "altitude": "FL150",
             "end": false
           },
           {
             "name": "WP9",
-            "speed": 25,
+            "speed": 20,
             "altitude": "FL150",
             "end": false
           },
           {
             "name": "WP4",
-            "speed": 25,
+            "speed": 20,
             "altitude": "FL150",
             "end": false
           }
@@ -684,37 +684,37 @@
       ],
       "end_waypoint_1": {
         "name": "WP8",
-        "speed": 25,
+        "speed": 20,
         "end": false
       },
       "end_waypoint_2": {
         "name": "WP11",
-        "speed": 25,
+        "speed": 40,
         "end": false
       },
       "possible_paths": [
         [
           {
             "name": "WP11",
-            "speed": 25,
+            "speed": 30,
             "altitude": "FL150",
             "end": false
           },
           {
             "name": "WP7",
-            "speed": 25,
+            "speed": 30,
             "altitude": "FL150",
             "end": false
           },
           {
             "name": "WP9",
-            "speed": 25,
+            "speed": 30,
             "altitude": "FL150",
             "end": false
           },
           {
             "name": "WP8",
-            "speed": 25,
+            "speed": 30,
             "altitude": "FL150",
             "end": false
           }

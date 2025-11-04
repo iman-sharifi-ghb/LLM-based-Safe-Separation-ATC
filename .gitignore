@@ -12,5 +12,8 @@ cache/
 BlueSky.py
 settings.cfg
 .DS_Store
-# *.jsonl
+*.jsonl
+wandb
 LLM_models/
+.ipynb_checkpoints
+lora-qwen-atc/
