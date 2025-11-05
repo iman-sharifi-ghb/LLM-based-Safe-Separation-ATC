@@ -1,5 +1,5 @@
 import torch
-import transformers, bitsandbytes, peft, datasets, os, subprocess
+import os
 from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer
 from datasets import load_dataset
 from peft import LoraConfig, TaskType, get_peft_model, prepare_model_for_kbit_training
@@ -41,33 +41,59 @@ model.print_trainable_parameters()
 
 #### 3. Tokenize the dataset
 def format_prompt(example):
-    return f"### Instruction:\n{example['system_prompt']}\n### Input:\n{example['user_prompt']}\n### Response:\n{example['prompt_response']}"
+    return (f"### System:\n{example['system_prompt'].strip()}\n\n"
+            f"### User:\n{example['user_prompt'].strip()}\n\n"
+            f"### Assistant:\n{example['prompt_response'].strip()}"
+    )
 
-def tokenize(example):
-    prompt = format_prompt(example)
-    tokens = tokenizer(
-        prompt,
+def tokenize_fn(example, max_length=512):
+    # 
+    full_prompt = format_prompt(example)
+    tokenized = tokenizer(
+        full_prompt,
         truncation=True,
-        max_length=512,
+        max_length=max_length,
         padding="max_length",
     )
-    tokens["labels"] = tokens["input_ids"].copy()
-    return tokens
+    labels = tokenized["input_ids"].copy()
 
-tokenized_dataset = dataset.map(tokenize)
+    # compute where the assistant starts
+    assistant_start = full_prompt.find("### Assistant:")
+    assistant_offset = len(tokenizer(full_prompt[:assistant_start + len("### Assistant:")])["input_ids"]) 
+
+    # mask everything before assistant start
+    labels[:assistant_offset] = [-100] * assistant_offset
+    tokenized["labels"] = labels
+    return tokenized
+
+# def tokenize(example):
+#     prompt = format_prompt(example)
+#     tokens = tokenizer(
+#         prompt,
+#         truncation=True,
+#         max_length=512,
+#         padding="max_length",
+#     )
+#     tokens["labels"] = tokens["input_ids"].copy()
+#     return tokens
+
+tokenized_dataset = dataset.map(tokenize_fn)
 
 #### 4. Set up training arguments and trainer
 training_args = TrainingArguments(
     output_dir="./lora-qwen-atc",
-    per_device_train_batch_size=2,
+    per_device_train_batch_size=1,
     gradient_accumulation_steps=4,
     num_train_epochs=1,
     learning_rate=2e-4,
     fp16=True,
     logging_steps=10,
     save_strategy="epoch",
-    evaluation_strategy="epoch"
+    eval_strategy="steps",
+    eval_steps=50,
+    label_names=["labels"],
 )
+
 trainer = Trainer(
     model=model,
     args=training_args,
@@ -79,4 +105,4 @@ trainer = Trainer(
 trainer.train()
 
 #### 5. Save the fine-tuned model
-trainer.save_model("./lora-qwen-atc-finetuned")
+trainer.save_model(".finetuned_models/lora-qwen-atc-finetuned2")
