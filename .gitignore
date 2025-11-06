@@ -17,3 +17,5 @@ wandb
 LLM_models/
 .ipynb_checkpoints
 lora-qwen-atc/
+download_base_llm.py
+finetuned_models/
