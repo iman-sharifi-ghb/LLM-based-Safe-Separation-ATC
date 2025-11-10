@@ -29,7 +29,7 @@ class QwenInferenceEngine:
         elif model_path is not None:
             # Load from path
             print(f"🚀 Loading model from: {model_path}")
-            self.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+            self.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, padding_side="left")
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_path,
                 device_map="auto",
@@ -84,34 +84,28 @@ class QwenInferenceEngine:
         Returns:
             dict: Contains 'action' and 'raw_output'
         """
-        # Add instruction for single-word output
-        enhanced_user_prompt = user_prompt + " Your output must contain exactly one word and no punctuation."
+
         
         # Create chat-formatted prompt
         formatted_prompt = self.format_prompt(system_prompt, user_prompt)
 
-        # messages = [
-        #     {"role": "system", "content": system_prompt},
-        #     {"role": "user", "content": enhanced_user_prompt}
-        # ]
         inputs = self.tokenizer(formatted_prompt, return_tensors="pt").to("cuda")
 
-        # Apply chat template and tokenize
-        # inputs = self.tokenizer.apply_chat_template(
-        #     messages,
-        #     tokenize=True,
-        #     add_generation_prompt=True,
-        #     return_tensors="pt"
-        # ).to(self.model.device)
+        if isinstance(inputs, torch.Tensor):
+            inputs = {"input_ids": inputs}
+        
+        if "attention_mask" not in inputs:
+            inputs["attention_mask"] = (inputs["input_ids"] != self.tokenizer.pad_token_id).long()
+        
         
         # Generate response
         with sdpa_kernel(SDPBackend.FLASH_ATTENTION): # torch.no_grad():
             output_ids = self.model.generate(**inputs, **self.generation_kwargs)
         
-        # Decode only the generated part
-        # gen_ids = output_ids[0, inputs.shape[-1]:]
-        raw_output = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+
+        raw_output = self.tokenizer.decode(output_ids[0, inputs["input_ids"].shape[1]:], skip_special_tokens=True)
         assistant_response = raw_output.split("### Assistant:")[-1].strip()
+        print("||| Assistant Response:", assistant_response)
         # Extract action
         action = self.extract_action(assistant_response)
         
@@ -153,54 +147,83 @@ class QwenInferenceEngine:
                 print(f"Processing batch {batch_idx + 1}/{num_batches} ({len(batch_prompts)} prompts)")
             
             # Add instruction for single-word output to each prompt
-            scenarios = [
-                prompt + " Your output must contain exactly one word and no punctuation." 
-                for prompt in batch_prompts
+            # scenarios = [
+            #     prompt + " Your output must contain exactly one word and no punctuation." 
+            #     for prompt in batch_prompts
+            # ]
+            batched_prompt_formatted = [
+                self.format_prompt(system_prompt, user_p) for user_p in batch_prompts
             ]
-            
+            current_batch_size = len(batched_prompt_formatted)
+            print("Batch size:" , current_batch_size)
             # Create chat-formatted prompts for Qwen
-            messages_batch = [
-                [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": scenario}
-                ]
-                for scenario in scenarios
-            ]
+            # messages_batch = [
+            #     [
+            #         {"role": "system", "content": system_prompt},
+            #         {"role": "user", "content": scenario}
+            #     ]
+            #     for scenario in batch_prompts
+            # ]
             
-            rendered_prompts = [
-                self.tokenizer.apply_chat_template(m, tokenize=False, add_generation_prompt=True)
-                for m in messages_batch
-            ]
+            # rendered_prompts = [
+            #     self.tokenizer.apply_chat_template(m, tokenize=False, add_generation_prompt=True)
+            #     for m in messages_batch
+            # ]
             
             # Tokenize as one padded batch
             enc = self.tokenizer(
-                rendered_prompts,
+                batched_prompt_formatted,
                 return_tensors="pt",
                 padding=True,
                 truncation=True
-            ).to(self.model.device)
+            )
+
+            # check whether attention mask is used. Note that this is batched input
+            if "attention_mask" not in enc:
+                enc["attention_mask"] = (enc["input_ids"] != self.tokenizer.pad_token_id).long()
+
+            # if isinstance(enc, torch.Tensor):
+            #     enc = {"input_ids": enc}
+            
+            # if "attention_mask" not in enc:
+            #     enc["attention_mask"] = (enc["input_ids"] != self.tokenizer.pad_token_id).long()
+            # .to(self.model.device)
             
             # Generate in batch
-            with torch.inference_mode():
-                out = self.model.generate(**enc, **self.generation_kwargs)
-            
-            # Decode per row and extract final action
-            input_lens = (enc["input_ids"] != self.tokenizer.pad_token_id).sum(dim=1)
-            
-            for i in range(len(rendered_prompts)):
-                gen_ids = out[i, input_lens[i]:]
-                text_output = self.tokenizer.decode(gen_ids, skip_special_tokens=True).strip()
-                all_raw_outputs.append(text_output)
+            # self.generation_kwargs["eos_token_id"] = None
+            batch_generation_kwargs = {
+            "max_new_tokens": 64,
+            "do_sample": False,
+            "temperature": 0.0,
+            "eos_token_id": self.tokenizer.eos_token_id,
+            "pad_token_id": self.tokenizer.eos_token_id,
+            "use_cache": True,
+        }
+            with torch.inference_mode(): #, sdpa_kernel(SDPBackend.FLASH_ATTENTION):
+                out = self.model.generate(
+                    **enc, 
+                    **batch_generation_kwargs,
+                )
+
+            # # decode all at once
+            decoded_outputs = self.tokenizer.batch_decode(
+                out[:, enc["input_ids"].shape[1]:],
+                skip_special_tokens=True
+            )
+
+            # post-process each decoded sample
+            for i, text_output in enumerate(decoded_outputs):
                 
-                if verbose:
-                    display(Markdown(f"**Prompt {start_idx + i + 1}:** {text_output}"))
-                
-                # Extract action using regex
-                action = self.extract_action(text_output)
+                assistant_response = text_output.split("### Assistant:")[-1].strip()
+                print("Raw OUT:", text_output, "||| Assistant Response:", assistant_response)
+                action = self.extract_action(assistant_response)
                 all_actions.append(action)
-                
+                all_raw_outputs.append(assistant_response)
+
                 if verbose:
+                    display(Markdown(f"**Prompt {start_idx + i + 1}:** {assistant_response}"))
                     print(f"[Prompt {start_idx + i + 1}] → {action}")
+
         
         return {
             'actions': all_actions,

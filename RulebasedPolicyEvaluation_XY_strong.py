@@ -38,7 +38,7 @@ if __name__ == '__main__':
     RENDER_MODE = 'sim'
     print(RENDER_MODE)
 
-    DATE = 'Oct18' # args.date
+    DATE = 'Nov10' # args.date
     # Model name
     MODEL_NAME_COMPANY1 = f'best_policy_CoA_{DATE}.pt'
     MODEL_NAME_COMPANY2 = f'best_policy_CoB_{DATE}.pt'

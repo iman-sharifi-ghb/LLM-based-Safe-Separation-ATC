@@ -100,12 +100,12 @@ if __name__ == '__main__':
 
             Actions, Reasons = env.get_rb_actions(observations)
 
-            llm_agents = ['AA0001', 'AA0002', 'AB0001', 'AB0002', "AA0003"]
+            llm_agents = ['AA0003', 'AA0004', 'AB0003', 'AC0002', "AD0003"]
             for agent in llm_agents.copy():
                 if agent not in Actions.keys():
                     llm_agents.remove(agent)
             if len(llm_agents) > 0:
-                llm_Actions = env.get_llm_actions(observations, agent_list=llm_agents)
+                llm_Actions = env.get_llm_actions_batch(observations, agent_list=llm_agents)
 
             # update Actions with llm_Actions
             for agent in llm_agents:
