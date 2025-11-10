@@ -100,10 +100,11 @@ if __name__ == '__main__':
 
             Actions, Reasons = env.get_rb_actions(observations)
 
-            llm_agents = ['AA0001']
-            for agent in llm_agents:
-                if agent not in Actions:
+            llm_agents = ['AA0001', 'AA0002']
+            for agent in llm_agents.copy():  # Iterate over a copy
+                if agent not in Actions.keys():  # No need for list() conversion
                     llm_agents.remove(agent)
+
             if len(llm_agents) > 0:
                 llm_Actions = env.get_llm_actions(observations, agent_list=llm_agents)
 

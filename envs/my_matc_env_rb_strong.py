@@ -160,7 +160,7 @@ class MATCEnv(ParallelEnv):
         self.all_state_action_pairs = []
 
         # Initialize the LLM engine
-        self.llm_engine = QwenInferenceEngine(model_path="/data/Iman/shared_LLM_models/Qwen2.5-Math-7B")
+        self.llm_engine = QwenInferenceEngine(model_path="/data/Iman/finetuned_models/merged-qwen-atc-model")
 
     def _stack(self, cmd: str, log: bool = False):
         # if log:
@@ -2716,6 +2716,51 @@ class MATCEnv(ParallelEnv):
                 llm_action = self.get_llm_response(system_prompt, user_prompt)
 
                 llm_actions[agent] = llm_action
+
+        return llm_actions
+    
+    def get_llm_actions_batch(self, observations, agent_list=None):
+        """
+        This function interacts with the LLM to get the action based on the prompts.
+        Inputs: system_prompt, user_prompt
+        Outputs: actions
+        """
+        llm_actions = {}
+        system_prompts = []
+        user_prompts = []
+        agents = []
+        if agent_list is None:
+            for agent, obs in observations.items():
+
+                ownship_intruder_info_ = self.ownship_intruder_info_single_agent(agent, observations)
+
+                system_prompt, user_prompt = self.get_ownship_prompt(ownship_intruder_info_)
+                
+                system_prompts.append(system_prompt)
+                user_prompts.append(user_prompt)
+                agents.append(agent)
+        else:
+            for agent in agent_list:
+
+                ownship_intruder_info_ = self.ownship_intruder_info_single_agent(agent, observations)
+
+                system_prompt, user_prompt = self.get_ownship_prompt(ownship_intruder_info_)
+                
+                system_prompts.append(system_prompt)
+                user_prompts.append(user_prompt)
+                agents.append(agent)
+
+        batch_results = self.llm_engine.batch_inference(
+            system_prompt=system_prompts[0],
+            user_prompts=user_prompts,
+            verbose=False
+        )
+
+        print("LLM Batch Results:", batch_results)
+
+        for i, agent in enumerate(agents):
+            llm_action = self.translate_action(batch_results["actions"][i])
+            llm_actions[agent] = llm_action
 
         return llm_actions
     

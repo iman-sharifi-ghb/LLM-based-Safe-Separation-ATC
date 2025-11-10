@@ -112,33 +112,54 @@ class QwenInferenceEngine:
             'raw_output': raw_output
         }
     
-    def batch_inference(self, system_prompt, user_prompts, batch_size=20, verbose=False):
+    def batch_inference(self, system_prompt, user_prompts, verbose=False):
         """
         Process multiple prompts in batches and return extracted actions.
+        
+        Logic:
+        - If len(user_prompts) <= 10: process all in one batch
+        - If len(user_prompts) > 10: process in batches of 10, with remainder in final batch
         
         Args:
             system_prompt (str): The system prompt for all conversations
             user_prompts (list): List of user prompts to process
-            batch_size (int): Number of prompts to process in each batch
             verbose (bool): Whether to display detailed outputs
             
         Returns:
             dict: Contains 'actions' and 'raw_outputs' lists
         """
+        total_prompts = len(user_prompts)
         all_actions = []
         all_raw_outputs = []
         
-        # Process in batches
-        num_batches = (len(user_prompts) + batch_size - 1) // batch_size
+        # Determine batch processing strategy
+        if total_prompts <= 10:
+            # Process all prompts in one batch
+            batch_size = total_prompts
+            num_batches = 1
+            if verbose:
+                print(f"Processing {total_prompts} prompts in 1 batch")
+        else:
+            # Process in batches of 10, with remainder in final batch
+            batch_size = 10
+            num_batches = (total_prompts + 9) // 10  # Ceiling division
+            if verbose:
+                remainder = total_prompts % 10
+                if remainder == 0:
+                    print(f"Processing {total_prompts} prompts in {num_batches} batches of {batch_size}")
+                else:
+                    print(f"Processing {total_prompts} prompts in {num_batches-1} batches of {batch_size} + 1 final batch of {remainder}")
         
+        # Process in batches
         for batch_idx in range(num_batches):
             start_idx = batch_idx * batch_size
-            end_idx = min(start_idx + batch_size, len(user_prompts))
+            end_idx = min(start_idx + batch_size, total_prompts)
             
             batch_prompts = user_prompts[start_idx:end_idx]
+            current_batch_size = len(batch_prompts)
             
             if verbose:
-                print(f"Processing batch {batch_idx + 1}/{num_batches} ({len(batch_prompts)} prompts)")
+                print(f"Processing batch {batch_idx + 1}/{num_batches} ({current_batch_size} prompts)")
             
             # Add instruction for single-word output to each prompt
             scenarios = [
