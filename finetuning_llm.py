@@ -75,10 +75,7 @@ def tokenize_fn(example, max_length=1024):
             (i for i, (start, end) in enumerate(offsets) if start >= assistant_start_char),
             len(labels)
         )
-        # print("Assistant token start:", assistant_token_start)
-        # prefix = full_prompt[:assistant_start + len(assistant_tag)]
-        # prefix_ids = tokenizer(prefix, truncation=True, max_length=max_length)["input_ids"]
-        # assistant_offset = len(prefix_ids)
+        
 
     # assistant_token_start = min(assistant_token_start, len(labels))
     # mask everything before assistant start
@@ -90,11 +87,7 @@ def tokenize_fn(example, max_length=1024):
     return tokenized
 
 
-# ex = dataset["train"][randint(0, len(dataset["train"])-1)]
-# tokenized_ex = tokenize_fn(ex)
-# print("Num tokens:", len(tokenized_ex["input_ids"]))
-# print("Num masked tokens:", tokenized_ex["labels"].count(-100))
-# print("Num valid labels: ", len(tokenized_ex["labels"]) - tokenized_ex["labels"].count(-100))
+
 tokenized_dataset = dataset.map(tokenize_fn, remove_columns=dataset["train"].column_names, batched=False)
 
 #### 4. Set up training arguments and trainer
