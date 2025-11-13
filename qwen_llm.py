@@ -28,7 +28,7 @@ class QwenInferenceEngine:
         elif model_path is not None:
             # Load from path
             print(f"🚀 Loading model from: {model_path}")
-            self.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+            self.tokenizer = AutoTokenizer.from_pretrained(model_path, padding_side="left", trust_remote_code=True)
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_path,
                 device_map="auto",
@@ -112,6 +112,17 @@ class QwenInferenceEngine:
             'raw_output': raw_output
         }
     
+    # Add once in your class:
+    def _ensure_pad_token(self):
+        tok = self.tokenizer
+        added = False
+        if tok.pad_token is None or tok.pad_token_id == tok.eos_token_id:
+            tok.add_special_tokens({"pad_token": "<|pad|>"})
+            added = True
+        if added:
+            self.model.resize_token_embeddings(len(tok))
+
+
     def batch_inference(self, system_prompt, user_prompts, verbose=False):
         """
         Process multiple prompts in batches and return extracted actions.
@@ -128,6 +139,10 @@ class QwenInferenceEngine:
         Returns:
             dict: Contains 'actions' and 'raw_outputs' lists
         """
+
+        # --- FIX 1: ensure real PAD (distinct from EOS) ---
+        # self._ensure_pad_token()
+
         total_prompts = len(user_prompts)
         all_actions = []
         all_raw_outputs = []
@@ -181,40 +196,62 @@ class QwenInferenceEngine:
                 for m in messages_batch
             ]
             
-            # Tokenize as one padded batch
+            # --- FIX 2: tokenize with padding + mask (pad to multiple of 8 is optional) ---
             enc = self.tokenizer(
                 rendered_prompts,
                 return_tensors="pt",
                 padding=True,
-                truncation=True
-            ).to(self.model.device)
-            
-            # Generate in batch
+                truncation=True,
+                pad_to_multiple_of=8
+            )
+            if "attention_mask" not in enc:
+                enc["attention_mask"] = (enc["input_ids"] != self.tokenizer.pad_token_id).long()
+            enc = {k: v.to(self.model.device) for k, v in enc.items()}
+
+            # --- FIX 3: generation kwargs that prevent empty rows ---
+            gen_kwargs = dict(getattr(self, "generation_kwargs", {}))
+            gen_kwargs.setdefault("max_new_tokens", 6)   # enough for "Decelerate"
+            gen_kwargs.setdefault("min_new_tokens", 1)   # <- force at least 1 token
+            gen_kwargs.setdefault("do_sample", False)
+            gen_kwargs["pad_token_id"] = self.tokenizer.pad_token_id
+            gen_kwargs["eos_token_id"] = self.tokenizer.eos_token_id
+            gen_kwargs.setdefault("use_cache", True)
+
             with torch.inference_mode():
-                out = self.model.generate(**enc, **self.generation_kwargs)
-            
-            # Decode per row and extract final action
-            input_lens = (enc["input_ids"] != self.tokenizer.pad_token_id).sum(dim=1)
-            
+                out = self.model.generate(**enc, **gen_kwargs)
+
+            # --- FIX 4: slice by attention_mask (true per-row prompt length) ---
+            input_lens = enc["attention_mask"].sum(dim=1)
+
             for i in range(len(rendered_prompts)):
+                # Slice-off prompt
                 gen_ids = out[i, input_lens[i]:]
                 text_output = self.tokenizer.decode(gen_ids, skip_special_tokens=True).strip()
+
+                # Fallback: if slice is empty, decode full row and search globally.
+                if not text_output:
+                    full_decoded = self.tokenizer.decode(out[i], skip_special_tokens=True)
+                    # Try to remove the prompt text prefix if it matches exactly
+                    if full_decoded.startswith(rendered_prompts[i]):
+                        text_output = full_decoded[len(rendered_prompts[i]):].strip()
+                    else:
+                        text_output = full_decoded.strip()
+
                 all_raw_outputs.append(text_output)
-                
                 if verbose:
                     display(Markdown(f"**Prompt {start_idx + i + 1}:** {text_output}"))
-                
-                # Extract action using regex
-                action = self.extract_action(text_output)
+
+                # print all raw outputs
+                print(f"Raw Output {start_idx + i + 1}: {text_output}")
+
+                # Extract exactly one of the three actions (case-insensitive)
+                m = re.search(r"\b(Accelerate|Decelerate|Hold)\b", text_output, flags=re.IGNORECASE)
+                action = m.group(1).capitalize() if m else "Hold"
                 all_actions.append(action)
-                
                 if verbose:
                     print(f"[Prompt {start_idx + i + 1}] → {action}")
-        
-        return {
-            'actions': all_actions,
-            'raw_outputs': all_raw_outputs
-        }
+
+        return {"actions": all_actions, "raw_outputs": all_raw_outputs}
     
     def evaluate_accuracy(self, system_prompt, user_prompts, desired_responses, batch_size=20, verbose=False):
         """
