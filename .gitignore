@@ -6,6 +6,10 @@ data/
 
 GHB/
 
+output/
+
+Qwen2.5-Math-7B-GRPO/
+
 plugins/
 
 scenario/
@@ -23,3 +27,4 @@ wandb/
 
 *.scn
 
+__pycache__/
