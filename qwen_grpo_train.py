@@ -18,13 +18,10 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 from peft import get_peft_model, LoraConfig, TaskType
 from datasets import load_dataset
 from tqdm import tqdm
-<<<<<<< HEAD
 from trl.import_utils import is_math_verify_available
 import Levenshtein
 import numpy as np
 import wandb
-=======
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
 
 # Optional DeepSpeed
 try:
@@ -43,15 +40,9 @@ os.environ['TOKENIZERS_PARALLELISM'] = 'true'
 # Model and training configuration
 model_path = "/data/Iman/shared_LLM_models/Qwen2.5-Math-7B"
 dataset_dir = "/data/Iman/datasets/"
-<<<<<<< HEAD
-Q_batch_size = 2
-beta = 0.04
-num_pre_Q = 3
-=======
 Q_batch_size = 1
 beta = 0.04
-num_pre_Q = 8
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
+num_pre_Q = 3
 all_steps = 1000
 max_prompt_length = 1024
 save_steps = 200
@@ -118,7 +109,6 @@ def to_grpo_row(ex):
         "solution": solution,
     }
 
-<<<<<<< HEAD
 if is_math_verify_available():
     from latex2sympy2_extended import NormalizationConfig
     from math_verify import LatexExtractionConfig, parse, verify
@@ -190,8 +180,6 @@ def action_reward(answer: str, desired_answer: str):
 
     return acc_reward
 
-=======
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
 
 def reward_correct(item, answer):
     """Calculate correctness reward"""
@@ -258,10 +246,7 @@ def gen_answers(prompts, tokenizer, gen_model, generation_config):
 def gen_samples(inputs, tokenizer, gen_model, generation_config):
     """Generate samples with rewards"""
     prompts = [x["Q"] for x in inputs]
-<<<<<<< HEAD
     desired_answers = [x["A"] for x in inputs]
-=======
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     answers = gen_answers(prompts, tokenizer, gen_model, generation_config)
     
     if len(answers) == 0:
@@ -269,7 +254,6 @@ def gen_samples(inputs, tokenizer, gen_model, generation_config):
     
     rewards = []
     for i, inp in enumerate(inputs):
-<<<<<<< HEAD
         desired_answer = desired_answers[i]
         for a in answers[i * num_pre_Q:(i + 1) * num_pre_Q]:
 
@@ -280,10 +264,6 @@ def gen_samples(inputs, tokenizer, gen_model, generation_config):
             act_reward = action_reward(a, desired_answer)
                                     
             rewards.append(sim_rew + act_reward)
-=======
-        for a in answers[i * num_pre_Q:(i + 1) * num_pre_Q]:
-            rewards.append(reward_correct(inp, a) + reward_format(inp, a))
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     
     prompts_text = [tokenizer.apply_chat_template([
         {"role": "system", "content": system_prompt},
@@ -298,47 +278,28 @@ def gen_samples(inputs, tokenizer, gen_model, generation_config):
     return prompt_inputs, output_ids, torch.tensor(rewards, dtype=torch.float32), answers
 
 
-<<<<<<< HEAD
 def generate_mode(QAs, gen_model, tokenizer, generation_config, num=4, rank=0):
-=======
-def generate_mode(QAs, gen_model, tokenizer, generation_config, num=10, rank=0):
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     """Generate training batches"""
     batches = []
     
     for ii in range(num):
-<<<<<<< HEAD
         qas = random.sample(QAs, Q_batch_size)
         prompt_inputs, output_ids, rewards, answers = gen_samples(qas, tokenizer, gen_model, generation_config)
-=======
-        inputs = random.sample(QAs, Q_batch_size)
-        prompt_inputs, output_ids, rewards, answers = gen_samples(inputs, tokenizer, gen_model, generation_config)
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
         
         if prompt_inputs is None:
             continue
         
-<<<<<<< HEAD
         # if rank == 0:
         #     print(f'Sample {ii} rewards:', rewards)
         #     if ii == 5:
         #         print('Sample answer:', answers[0])
-=======
-        if rank == 0:
-            print(f'Sample {ii} rewards:', rewards)
-            if ii == 5:
-                print('Sample answer:', answers[0])
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
         
         if (rewards.max() - rewards.min()).item() < 0.01:
             continue
         
-<<<<<<< HEAD
         # Store original rewards before normalizing
         original_rewards = rewards.clone()
         
-=======
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
         # Normalize rewards
         rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-4)
         
@@ -351,10 +312,7 @@ def generate_mode(QAs, gen_model, tokenizer, generation_config, num=10, rank=0):
             'plen': prompt_length,
             'inputs': merged_ids,
             'rewards': rewards,
-<<<<<<< HEAD
             'original_rewards': original_rewards,
-=======
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
         }
         
         if compute_gen_logps:
@@ -425,18 +383,12 @@ def main():
     parser.add_argument('--gpu', type=int, default=0, help='GPU device to use')
     parser.add_argument('--load-in-8bit', action='store_true', help='Load model in 8-bit precision')
     parser.add_argument('--gradient-checkpointing', action='store_true', help='Enable gradient checkpointing to save memory')
-<<<<<<< HEAD
     parser.add_argument('--multi-gpu', action='store_true', help='Use multiple GPUs with model parallelism')
     parser.add_argument('--gpus', type=str, default='0,1', help='Comma-separated list of GPU IDs to use (e.g., "0,1")')
     args = parser.parse_args()
     
     use_deepspeed = args.use_deepspeed and DEEPSPEED_AVAILABLE
     use_deepspeed = False
-=======
-    args = parser.parse_args()
-    
-    use_deepspeed = args.use_deepspeed and DEEPSPEED_AVAILABLE
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     
     # Set CUDA device
     if torch.cuda.is_available():
@@ -459,7 +411,6 @@ def main():
         "_attn_implementation": "sdpa",
     }
     
-<<<<<<< HEAD
     if args.multi_gpu:
         gpu_ids = [int(g.strip()) for g in args.gpus.split(',')]
         model_kwargs["device_map"] = "auto"
@@ -475,12 +426,6 @@ def main():
         model_kwargs["device_map"] = {"": args.gpu}
     else:
         model_kwargs["device_map"] = {"": args.gpu}
-=======
-    if args.load_in_8bit:
-        print("Loading model in 8-bit mode to save memory...")
-        model_kwargs["load_in_8bit"] = True
-        model_kwargs["device_map"] = {"": args.gpu}
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     
     base_model = AutoModelForCausalLM.from_pretrained(model_path, **model_kwargs)
     
@@ -542,7 +487,6 @@ def main():
         gen_model = engine
         train_model = engine
         rank = torch.distributed.get_rank()
-<<<<<<< HEAD
     elif args.multi_gpu:
         print("Initializing multi-GPU training with model parallelism...")
         device = torch.device("cuda")  # Primary device, model handles distribution via device_map
@@ -562,8 +506,6 @@ def main():
         gen_model = model
         train_model = model
         rank = 0
-=======
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     else:
         print("Initializing single-GPU training...")
         device = torch.device(f"cuda:{args.gpu}")
@@ -590,7 +532,6 @@ def main():
         train_model = model
         rank = 0
     
-<<<<<<< HEAD
     # Initialize wandb
     if rank == 0:
         wandb.init(project="GRPO_Training", name="Qwen_GRPO_Run", config={
@@ -601,8 +542,6 @@ def main():
             "all_steps": all_steps,
         })
     
-=======
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     # Training loop
     print("Starting training...")
     progress = range(1, all_steps + 1)
@@ -619,10 +558,7 @@ def main():
         
         # Train on each batch
         total_loss = 0.0
-<<<<<<< HEAD
         all_original_rewards = []
-=======
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
         for batch in batches:
             if use_deepspeed:
                 loss = GRPO_step(batch, engine, tokenizer, device)
@@ -632,7 +568,6 @@ def main():
                 loss = GRPO_step(batch, train_model, tokenizer, device, optimizer)
             
             total_loss += loss.item()
-<<<<<<< HEAD
             
             # Collect original rewards for step average
             all_original_rewards.append(batch['original_rewards'])
@@ -651,11 +586,6 @@ def main():
                 print(f"Average reward for step {step}: {step_avg_reward:.4f}")
                 wandb.log({"loss": avg_loss, "reward": step_avg_reward}, step=step)
         
-=======
-        
-        avg_loss = total_loss / len(batches) if batches else 0.0
-        
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
         if rank == 0:
             if isinstance(progress, tqdm):
                 progress.set_description(f"Loss: {avg_loss:.6f}")
@@ -685,12 +615,9 @@ def main():
                 dist.barrier()
     
     print("Training complete!")
-<<<<<<< HEAD
     
     if rank == 0:
         wandb.finish()
-=======
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
 
 
 if __name__ == "__main__":
