@@ -41,18 +41,19 @@ os.environ['TOKENIZERS_PARALLELISM'] = 'true'
 model_path = "/data/Iman/shared_LLM_models/Qwen2.5-Math-7B"
 dataset_dir = "/data/Iman/datasets/"
 Q_batch_size = 1
-beta = 0.04
+beta = 0.03
 num_pre_Q = 3
-all_steps = 1000
+all_steps = 2000
 max_prompt_length = 1024
 save_steps = 200
 compute_gen_logps = True
 clip_param = 0.2
+save_dir = "/data/Iman/finetuned_models/grpo-qwen-atc5"
 
 # DeepSpeed configuration
 ds_config = {
     "train_micro_batch_size_per_gpu": Q_batch_size * num_pre_Q,
-    "gradient_accumulation_steps": 2,
+    "gradient_accumulation_steps": 4,
     "optimizer": {
         "type": "AdamW",
         "params": {"lr": 1e-6}
@@ -71,8 +72,14 @@ ds_config = {
     }
 }
 
-system_prompt = """You are a helpful assistant. A conversation between User and Assistant. The user asks a question, and the Assistant solves it. The Assistant first thinks about the reasoning process in the mind and then provides the user with the answer.\
-The reasoning process and answer are enclosed within <think> </think> and<answer> </answer> tags, respectively, i.e., <think> reasoning process here </think><answer> answer here </answer>."""
+system_prompt = """You are an airspace tactical deconfliction assistant. At each time step, an ownship agent is approaching a bottleneck waypoint, such as merging or intersections points, where other agents (intruders) are approaching as well. Based on the information of the intruders, 
+the ownship should take an action to avoid collisions. The ownship agent only has access to the information of the front intruders, but there might be other intruders behind the ownship. Your task is to help the ownship aircraft avoid collisions with front intruder aircraft by 
+suggesting appropriate speed adjustments. The ownship cannot unnecessarily decelerate since it might occlude the airspace for other agents behind it. Now, given the ownship state: [v, v_min, v_max delta_d1, delta_d2, delta_dwpt1, delta_dwpt2, delta_v1, delta_v2, same_route1, same_route2], 
+v: ownship speed(m/s), v_min: ownship minimum speed(m/s), v_max: ownship maximum speed(m/s), d1: the absolute distance between the first front intruder (if any) and ownship(m), d2: the absolute distance between the second front intruder (if any) and ownship(m),   
+delta_dwpt1: the absolute difference between the distance to the next waypoint between the first front intruder (if any) and ownship(m),  delta_dwpt2: the absolute difference between the distance to the next waypoint between the second front intruder (if any) and ownship(m), 
+delta_v1: signed speed difference between the first front intruder and ownship(m/s), delta_v2: signed speed difference between the second front intruder and ownship(m/s), same_route1: whether the first front intruder is on the same route as the ownship (1: yes, 0: no), 
+same_route2: whether the second front intruder is on the same route as the ownship (1: yes, 0: no). If one of the values is None, it means there is no such front intruder. Based on the above information, decide the ownship action: Decelerate / Hold / Accelerate. 
+Never include reasoning, explanations, or any text other than the single chosen action.\n """
 
 # ===============================
 # Helper Functions
@@ -94,8 +101,12 @@ def verify_cuda():
 
 def to_grpo_row(ex):
     """Convert dataset row to GRPO format"""
+    # prompt = (
+    #     f"### System:\n{ex['system_prompt'].strip()}\n"
+    #     f"### User:\n{ex['user_prompt'].strip()}. Always start your response with: The recommended action is: \n"
+    #     f"### Assistant: "
+    # )
     prompt = (
-        f"### System:\n{ex['system_prompt'].strip()}\n"
         f"### User:\n{ex['user_prompt'].strip()}. Always start your response with: The recommended action is: \n"
         f"### Assistant: "
     )
@@ -597,19 +608,19 @@ def main():
             if use_deepspeed:
                 dist.barrier()
             
-            if rank == 0:
-                print(f'\nSaving model at step {step}...')
-                save_name = f"./step_{step}"
-                
-                if use_deepspeed:
-                    state_dict = engine.module.state_dict()
-                    state_dict = type(state_dict)({k: v.cpu() for k, v in state_dict.items()})
-                    engine.module.save_pretrained(save_name, state_dict=state_dict)
-                else:
-                    model.save_pretrained(save_name)
-                
-                tokenizer.save_pretrained(save_name)
-                print(f'Model saved to {save_name}')
+            # if rank == 0:
+            print(f'\nSaving model at step {step}...')
+            save_name = f"{save_dir}/step_{step}"
+            
+            if use_deepspeed:
+                state_dict = engine.module.state_dict()
+                state_dict = type(state_dict)({k: v.cpu() for k, v in state_dict.items()})
+                engine.module.save_pretrained(save_name, state_dict=state_dict)
+            else:
+                model.save_pretrained(save_name)
+            
+            tokenizer.save_pretrained(save_name)
+            print(f'Model saved to {save_name}')
             
             if use_deepspeed:
                 dist.barrier()
