@@ -1,0 +1,42 @@
+{
+  "AA": {"type": "Amazon Prime Air - MK30 Model",
+         "route_id": 1,
+         "min_speed(knots)": 0.0,
+         "max_speed(knots)": 80.0,
+         "desired_speed(knots)": 65.0,
+         "speed_increment_per_second(knots)": 3.3,
+         "detection_range(nm)": 1.5,
+         "safety_radius(nm)": 0.27,
+         "collision_radius(nm)": 0.027
+       },
+  "AB": {"type": "Google X-wing",
+         "route_id": 2,
+         "min_speed(knots)": 0.0,
+         "max_speed(knots)": 60.0,
+         "desired_speed(knots)": 45.0,
+         "speed_increment_per_second(knots)": 2.0,
+         "detection_range(nm)": 1.2,
+         "safety_radius(nm)": 0.27,
+         "collision_radius(nm)": 0.027
+       },
+  "AC": {"type": "Amazon Prime Air - MK30 Model",
+         "route_id": 3,
+         "min_speed(knots)": 0.0,
+         "max_speed(knots)": 80.0,
+         "desired_speed(knots)": 65.0,
+         "speed_increment_per_second(knots)": 3.3,
+         "detection_range(nm)": 1.5,
+         "safety_radius(nm)": 0.27,
+         "collision_radius(nm)": 0.027
+       },
+  "AD": {"type": "Google X-wing",
+         "route_id": 4,
+         "min_speed(knots)": 0.0,
+         "max_speed(knots)": 60.0,
+         "desired_speed(knots)": 45.0,
+         "speed_increment_per_second(knots)": 2.0,
+         "detection_range(nm)": 1.2,
+         "safety_radius(nm)": 0.27,
+         "collision_radius(nm)": 0.027
+       }
+}
