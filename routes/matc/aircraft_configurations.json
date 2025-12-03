@@ -33,7 +33,11 @@
          "route_id": 4,
          "min_speed(knots)": 0.0,
          "max_speed(knots)": 60.0,
+<<<<<<< HEAD
          "desired_speed(knots)": 45.0,
+=======
+          "desired_speed(knots)": 45.0,
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
          "speed_increment_per_second(knots)": 2.0,
          "detection_range(nm)": 1.2,
          "safety_radius(nm)": 0.27,

@@ -3,53 +3,103 @@
     {
       "name": "WP1",
       "latitude": 33.20470,
+<<<<<<< HEAD
       "longitude": -96.91000
+=======
+      "longitude": -96.91000,
+      "type": "regular"
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     },
     {
       "name": "WP2",
       "latitude": 33.17895,
+<<<<<<< HEAD
       "longitude": -96.91973
+=======
+      "longitude": -96.91973,
+      "type": "regular"
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     },
     {
       "name": "WP3",
       "latitude": 33.18389,
+<<<<<<< HEAD
       "longitude": -96.88552
+=======
+      "longitude": -96.88552,
+      "type": "merging"
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     },
     {
       "name": "WP4",
       "latitude": 33.15826,
+<<<<<<< HEAD
       "longitude": -96.81852
+=======
+      "longitude": -96.81852,
+      "type": "regular"
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     },
     {
       "name": "WP5",
       "latitude": 33.1211,
+<<<<<<< HEAD
       "longitude": -96.91112
+=======
+      "longitude": -96.91112,
+      "type": "regular"
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     },
     {
       "name": "WP6",
       "latitude": 33.10562,
+<<<<<<< HEAD
       "longitude": -96.88237
+=======
+      "longitude": -96.88237,
+      "type": "regular"
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     },
     {
       "name": "WP7",
       "latitude": 33.13934,
+<<<<<<< HEAD
       "longitude": -96.87712
+=======
+      "longitude": -96.87712,
+      "type": "merging"
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     },
     {
       "name": "WP8",
       "latitude": 33.18607,
+<<<<<<< HEAD
       "longitude": -96.83017
     },
     {
       "name": "WP9",
       "latitude": 33.16731, 
       "longitude": -96.84644
+=======
+      "longitude": -96.83017,
+      "type": "regular"
+    },
+    {
+      "name": "WP9",
+      "latitude": 33.16731,
+      "longitude": -96.84644,
+      "type": "intersection"
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     }
   ],
   "routes": [
     {
       "flight_prefix": ["AA"],
       "aircraft": ["Amzn"],
+<<<<<<< HEAD
+=======
+      "aircraft_color": ["blue"],
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
       "distribution": [
         {
           "name": "Monday",
@@ -109,6 +159,10 @@
     {
       "flight_prefix": ["AB"],
       "aircraft": ["Xwing"],
+<<<<<<< HEAD
+=======
+      "aircraft_color": ["red"],
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
       "distribution": [
         {
           "name": "Monday",
@@ -168,6 +222,10 @@
     {
       "flight_prefix": ["AC"],
       "aircraft": ["Amzn"],
+<<<<<<< HEAD
+=======
+      "aircraft_color": ["blue"],
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
       "distribution": [
         {
           "name": "Monday",
@@ -227,6 +285,10 @@
     {
       "flight_prefix": ["AD"],
       "aircraft": ["Xwing"],
+<<<<<<< HEAD
+=======
+      "aircraft_color": ["red"],
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
       "distribution": [
         {
           "name": "Monday",

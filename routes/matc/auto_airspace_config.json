@@ -10,6 +10,7 @@
   "waypoints": [
     {
       "name": "WP1",
+<<<<<<< HEAD
       "latitude": 33.14371,
       "longitude": -96.80426,
       "type": "regular"
@@ -64,6 +65,60 @@
       "latitude": 33.22597,
       "longitude": -96.87985,
       "type": "regular"
+=======
+      "latitude": 33.20287,
+      "longitude": -96.93729
+    },
+    {
+      "name": "WP2",
+      "latitude": 33.16265,
+      "longitude": -96.94289
+    },
+    {
+      "name": "WP3",
+      "latitude": 33.186490438447336,
+      "longitude": -96.89913438614666
+    },
+    {
+      "name": "WP4",
+      "latitude": 33.16594,
+      "longitude": -96.80141
+    },
+    {
+      "name": "WP5",
+      "latitude": 33.10451,
+      "longitude": -96.91509
+    },
+    {
+      "name": "WP6",
+      "latitude": 33.08573,
+      "longitude": -96.86806
+    },
+    {
+      "name": "WP7",
+      "latitude": 33.1289125382992,
+      "longitude": -96.87002242052228
+    },
+    {
+      "name": "WP8",
+      "latitude": 33.20197,
+      "longitude": -96.83324
+    },
+    {
+      "name": "WP9",
+      "latitude": 33.175134743575015,
+      "longitude": -96.83992734653336
+    },
+    {
+      "name": "WP10",
+      "latitude": 33.19156,
+      "longitude": -96.9483
+    },
+    {
+      "name": "WP11",
+      "latitude": 33.08969,
+      "longitude": -96.89828
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     }
   ],
   "routes": [
@@ -72,10 +127,14 @@
         "AA"
       ],
       "aircraft": [
+<<<<<<< HEAD
         "Xwing"
       ],
       "aircraft_color": [
         "MAGENTA"
+=======
+        "Amzn"
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
       ],
       "distribution": [
         {
@@ -182,9 +241,12 @@
       "aircraft": [
         "Xwing"
       ],
+<<<<<<< HEAD
       "aircraft_color": [
         "MAGENTA"
       ],
+=======
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
       "distribution": [
         {
           "name": "Monday",
@@ -288,10 +350,14 @@
         "AC"
       ],
       "aircraft": [
+<<<<<<< HEAD
         "Xwing"
       ],
       "aircraft_color": [
         "MAGENTA"
+=======
+        "Amzn"
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
       ],
       "distribution": [
         {
@@ -396,10 +462,14 @@
         "AD"
       ],
       "aircraft": [
+<<<<<<< HEAD
         "Amzn"
       ],
       "aircraft_color": [
         "CYAN"
+=======
+        "Xwing"
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
       ],
       "distribution": [
         {
@@ -501,14 +571,125 @@
     },
     {
       "flight_prefix": [
+<<<<<<< HEAD
+=======
+        "AE"
+      ],
+      "aircraft": [
+        "Amzn"
+      ],
+      "distribution": [
+        {
+          "name": "Monday",
+          "spawn": {
+            "type": "rv_discrete",
+            "parameters": {
+              "values": [
+                [
+                  5
+                ],
+                [
+                  1
+                ]
+              ]
+            }
+          },
+          "spacing": {
+            "type": "rv_discrete",
+            "parameters": {
+              "values": [
+                [
+                  40,
+                  45,
+                  50,
+                  55,
+                  60,
+                  65,
+                  70,
+                  75,
+                  80,
+                  85
+                ],
+                [
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1
+                ]
+              ]
+            }
+          },
+          "direction_forward_probability": 1,
+          "flight_prefix_probabilities": [
+            1
+          ],
+          "aircraft_probabilities": [
+            1
+          ],
+          "path_probabilities": [
+            "1"
+          ]
+        }
+      ],
+      "end_waypoint_1": {
+        "name": "WP4",
+        "speed": 25,
+        "end": false
+      },
+      "end_waypoint_2": {
+        "name": "WP10",
+        "speed": 25,
+        "end": false
+      },
+      "possible_paths": [
+        [
+          {
+            "name": "WP10",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP3",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP9",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP4",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          }
+        ]
+      ]
+    },
+    {
+      "flight_prefix": [
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
         "AF"
       ],
       "aircraft": [
         "Xwing"
       ],
+<<<<<<< HEAD
       "aircraft_color": [
         "MAGENTA"
       ],
+=======
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
       "distribution": [
         {
           "name": "Monday",

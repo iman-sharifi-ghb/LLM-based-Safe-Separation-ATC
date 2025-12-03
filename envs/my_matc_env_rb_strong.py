@@ -161,7 +161,10 @@ class MATCEnv(ParallelEnv):
 
         # Initialize the LLM engine
         self.llm_engine = QwenInferenceEngine(model_path="/data/Iman/finetuned_models/merged-qwen-atc-model")
+<<<<<<< HEAD
         # self.llm_engine = QwenInferenceEngine(model_path="/data/Iman/finetuned_models/grpo-qwen-atc/merged-qwen-atc-model")
+=======
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
 
     def _stack(self, cmd: str, log: bool = False):
         # if log:
@@ -240,8 +243,12 @@ class MATCEnv(ParallelEnv):
         stack.stack('CDMETHOD OFF')
         stack.stack(f"NOISE {'ON' if self.noise else 'OFF'}")
 
+<<<<<<< HEAD
         # stack.stack(f'DT {self.dt}')
         stack.stack(f'DT 1.0')
+=======
+        stack.stack(f'DT {self.dt}')
+>>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
         stack.stack('OP')
 
         self.agent_init_wpts = {}

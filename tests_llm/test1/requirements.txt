@@ -1,0 +1,9 @@
+transformers>=4.40.0
+accelerate>=0.26.0
+einops
+tiktoken
+bitsandbytes
+safetensors
+torch
+jupyter
+notebook
