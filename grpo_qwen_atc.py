@@ -109,11 +109,7 @@ def load_and_prepare_dataset(data_file):
         prompt = (
             f"### System:\n{ex['system_prompt'].strip()}\n\n"
             f"### User:\n{ex['user_prompt'].strip()}\n\n"
-<<<<<<< HEAD
             f"### Assistant:\n The recommended action for ownship is to "
-=======
-            f"### Assistant:\n"
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
         )
         return {
             "prompt": prompt,
@@ -218,11 +214,7 @@ class DictRewardGRPOTrainer(GRPOTrainer):
             reward = self.action_reward_dict.get(prompt_id, {}).get(action, -3.0)
             rewards[i, 0] = reward
         
-<<<<<<< HEAD
         print("Rewards:", rewards.flatten().tolist())
-=======
-        # print("Rewards:", rewards.flatten().tolist())
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
         return rewards
     
     def get_taken_action_from_completion(self, completion):
@@ -238,21 +230,12 @@ def setup_grpo_config(output_dir):
     return GRPOConfig(
         output_dir=output_dir,
         logging_steps=5,
-<<<<<<< HEAD
         learning_rate=2e-4,               # small LR for RL on LoRA
         per_device_train_batch_size=2,
         gradient_accumulation_steps=4,
         num_generations=4,                # G: group size per prompt
         max_prompt_length=1024,
         max_completion_length=3,
-=======
-        learning_rate=5e-6,               # small LR for RL on LoRA
-        per_device_train_batch_size=4,
-        gradient_accumulation_steps=4,
-        num_generations=4,                # G: group size per prompt
-        max_prompt_length=768,
-        max_completion_length=50,
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
         beta=0.02,                        # enable a small KL to the ref policy
         scale_rewards="batch",            # stabler than per-group
         remove_unused_columns=False,
@@ -262,12 +245,8 @@ def setup_grpo_config(output_dir):
         min_p=None,
         top_p=None,
         temperature=1.0,
-<<<<<<< HEAD
         report_to=["wandb"],
         do_train=True,
-=======
-        report_to=["wandb"]
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
     )
 
 
@@ -278,11 +257,7 @@ def main():
                        default="/data/Iman/finetuned_models/merged-qwen-atc-model",
                        help="Path to the base model")
     parser.add_argument("--data_file", type=str,
-<<<<<<< HEAD
                        default="/data/Iman/datasets/ownship_prompts_with_action_rewards_dataNov17.jsonl",
-=======
-                       default="ownship_prompts_with_action_rewards_dataNov12.jsonl",
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
                        help="Path to the training data file")
     parser.add_argument("--output_dir", type=str,
                        default="/data/Iman/finetuned_models/grpo-qwen-atc/",
