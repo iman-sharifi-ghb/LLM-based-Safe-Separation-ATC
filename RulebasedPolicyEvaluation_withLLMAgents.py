@@ -87,6 +87,8 @@ if __name__ == '__main__':
         # Starting time for the episode
         start_time = time.time()
 
+        env.LLM_agents_list = ['AA0002', 'AA0003','AB0002', 'AB0003', 'AC0002', 'AC0003', 'AD0002', 'AD0003']
+
         rewards = {}
         observations, processed_states = env.reset()
         dones = {agent: 0 for agent in processed_states.keys()}  # Initialize done states for all agents
@@ -100,7 +102,19 @@ if __name__ == '__main__':
 
             Actions, Reasons = env.get_rb_actions(observations)
 
-            llm_agents = ['AA0002', 'AA0003','AB0002', 'AB0003', 'AC0002', 'AC0003', 'AD0002', 'AD0003']
+            all_agents = list(Actions.keys())
+            # llm_agents = all_agents.copy()
+
+            llm_agents = env.LLM_agents_list.copy()
+
+            for agent in llm_agents:
+                dist_to_nxt_wp = env.distance_to_nxt_wpt(agent)
+                dist_to_nxt_wp = 1852 * dist_to_nxt_wp  # convert to meters
+                if dist_to_nxt_wp < 1000:
+                    pass
+                else:
+                    del llm_agents[llm_agents.index(agent)]
+
             # llm_agents = ['AA0001', 'AB0001']
 
             for agent in llm_agents.copy():

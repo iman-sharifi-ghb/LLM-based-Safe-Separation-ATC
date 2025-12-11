@@ -51,6 +51,92 @@ W_MISSION_REW = 0.1
 
 OFFSET_TIME = 55.00
 
+# vehicle_speed_categories = {
+#     "Amazon Prime Air - MK30 Model": ,
+#     "Google X-Wing": ,
+# }
+
+def speed_indicator(speed, max_speed):
+    """
+    Converts a speed value into a categorical indicator: low, medium, or high.
+    """
+    if speed < 0.15 * max_speed:
+        return 'very low'
+    elif 0.15 * max_speed <= speed < 0.33 * max_speed:
+        return 'low'
+    elif 0.33 * max_speed <= speed < 0.55 * max_speed:
+        return 'medium'
+    elif 0.55 * max_speed <= speed < 0.75 * max_speed:
+        return 'high'
+    else:
+        return 'very high'
+    
+def desired_speed_indicator(current_speed, max_speed):
+    desired_speed = 0.75 * max_speed  # Example desired speed at 75% of max speed
+
+    if current_speed < desired_speed:
+        return 'lower'
+    else:  
+        return 'higher'
+
+def distance_indicator(distance):
+    """
+    Converts a distance value into a categorical indicator: near, medium, or far.
+    """
+    safe_distance = 500  # Example maximum distance for categorization
+    if distance < 0.5 * safe_distance:
+        return 'too unsafe'
+    elif 0.5 * safe_distance <= distance <  safe_distance:
+        return 'unsafe'
+    elif safe_distance <= distance < 1.5 * safe_distance:
+        return 'medium safe'
+    elif 1.5 * safe_distance <= distance < 2.5 * safe_distance:
+        return 'safe'
+    else:
+        return 'very safe'
+    
+def wypoint_distance_indicator(delta_distance):
+    """
+    Converts a waypoint distance difference into a categorical indicator: close, moderate, or far.
+    """
+    safe_distance = 500  # Example maximum distance for categorization
+    if delta_distance < 0.3 * safe_distance:
+        return 'too short' # too close
+    elif 0.3 * safe_distance <= delta_distance < 0.5 * safe_distance:
+        return 'short' # close
+    elif 0.5 * safe_distance <= delta_distance < 1.5 * safe_distance:
+        return 'moderate' # moderate
+    elif 1.5 * safe_distance <= delta_distance < 2.5 * safe_distance:
+        return 'long' # far
+    else:
+        return 'very long' # so far
+    
+def delta_waypoint_distance_indicator(delta_distance):
+    if delta_distance <= 50:
+        return 'nearly equal'
+    elif 50 < delta_distance <= 200:
+        return 'slightly different'
+    elif 200 < delta_distance <= 500:
+        return 'moderately different'
+    else:
+        return 'significantly different'
+    
+def delta_speed_indicator(delta_speed, max_speed):
+    if abs(delta_speed) < 0.1 * max_speed:
+        return 'nearly equal'
+    elif 0.1 * max_speed <= abs(delta_speed) < 0.3 * max_speed and delta_speed > 0:
+        return 'slightly higher'
+    elif 0.1 * max_speed <= abs(delta_speed) < 0.3 * max_speed and delta_speed < 0:
+        return 'slightly lower'
+    elif 0.3 * max_speed <= abs(delta_speed) < 0.6 * max_speed and delta_speed > 0:
+        return 'moderately higher'
+    elif 0.3 * max_speed <= abs(delta_speed) < 0.6 * max_speed and delta_speed < 0:
+        return 'moderately lower'
+    elif abs(delta_speed) >= 0.6 * max_speed and delta_speed > 0:
+        return 'significantly higher'
+    else:
+        return 'significantly lower'
+
 class MATCEnv(ParallelEnv):
     metadata = {"render_modes": ['sim', 'server', 'export_scenario']}
 
@@ -160,11 +246,10 @@ class MATCEnv(ParallelEnv):
         self.all_state_action_pairs = []
 
         # Initialize the LLM engine
-        self.llm_engine = QwenInferenceEngine(model_path="/data/Iman/finetuned_models/merged-qwen-atc-model")
-<<<<<<< HEAD
+        self.llm_engine = QwenInferenceEngine(model_path="/data/Iman/finetuned_models/merged-qwen-atc-model2")
         # self.llm_engine = QwenInferenceEngine(model_path="/data/Iman/finetuned_models/grpo-qwen-atc/merged-qwen-atc-model")
-=======
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
+
+        self.LLM_agents_list = []
 
     def _stack(self, cmd: str, log: bool = False):
         # if log:
@@ -243,16 +328,12 @@ class MATCEnv(ParallelEnv):
         stack.stack('CDMETHOD OFF')
         stack.stack(f"NOISE {'ON' if self.noise else 'OFF'}")
 
-<<<<<<< HEAD
-        # stack.stack(f'DT {self.dt}')
-        stack.stack(f'DT 1.0')
-=======
         stack.stack(f'DT {self.dt}')
->>>>>>> 0f687120709573f812dbaa7f984ad3ee20f07ce6
         stack.stack('OP')
 
         self.agent_init_wpts = {}
         self.agent_route_ids = {}
+
         for flight in self.schedule:
             origin = flight.path[0]
             destination = flight.path[-1]
@@ -261,8 +342,12 @@ class MATCEnv(ParallelEnv):
             
             stack.stack(f'DELAY {flight.entry_time} CRE {flight.flight_number} {flight.aircraft_type} {origin.waypoint.coordinate} {initial_heading} {origin.altitude} {initial_speed if not origin.end else 60}')
 
-            stack.stack(f'DELAY {flight.entry_time} COLOR {flight.flight_number} {flight.aircraft_color}')
-
+            if flight.flight_number in self.LLM_agents_list:
+                # If the agent is an LLM agent, we need to set the color to blue
+                stack.stack(f'DELAY {flight.entry_time} COLOR {flight.flight_number} blue')
+            else:
+                stack.stack(f'DELAY {flight.entry_time} COLOR {flight.flight_number} {flight.aircraft_color}')
+    
             if origin.end:
                 stack.stack(f'DELAY {flight.entry_time} ORIG {flight.flight_number} {origin.waypoint.name}')
 
@@ -2623,7 +2708,7 @@ class MATCEnv(ParallelEnv):
         prompt += f"Based on the above information, what actions should the ownship take? (Decelerate/Hold/Accelerate) \n"
         return prompt
     
-    def get_ownship_prompt(self, ownship_intruder_info):
+    def get_ownship_prompt_v4(self, ownship_intruder_info):
         ownship_info = ownship_intruder_info['ownship_info']
         first_intruder_info = ownship_intruder_info['first_closest_front_intruder_info']
         second_intruder_info = ownship_intruder_info['second_closest_front_intruder_info']
@@ -2680,6 +2765,219 @@ class MATCEnv(ParallelEnv):
             same_route1=same_route1 if same_route1 is not None else float('nan'),
             same_route2=same_route2 if same_route2 is not None else float('nan')
         )
+        return system_prompt, user_prompt
+    
+
+    def get_ownship_prompt_v5(self, ownship_intruder_info):
+        """
+        Returns a formatted string prompt for the ownship information.
+        """
+        ownship_info = ownship_intruder_info['ownship_info']
+        first_intruder_info = ownship_intruder_info['first_closest_front_intruder_info']
+        second_intruder_info = ownship_intruder_info['second_closest_front_intruder_info']
+        ownship_action = ownship_intruder_info['ownship_action'] 
+
+        # system_prompt = """You are an airspace tactical deconfliction assistant. At each time step, an ownship agent is approaching a bottleneck waypoint, such as merging or intersections points, where other agents (intruders) are approaching as well. 
+        #     Based on the information of the ownship and intruders, the ownship should take an action to avoid collisions. The ownship agent only has access to the information of the front intruders, 
+        #     but there might be other intruders behind the ownship. Your task is to help the ownship aircraft avoid collisions with front intruder aircraft by 
+        #     suggesting appropriate speed adjustments. The ownship cannot unnecessarily decelerate since it might occlude the airspace for other agents behind it.
+        #     """
+        system_prompt = (
+            f"You are an airspace tactical deconfliction assistant. At each time step, an ownship agent is approaching a bottleneck waypoint, such as merging or intersections points, where other agents (intruders) are approaching as well.\n"
+            f"Based on the information of the ownship and intruders, the ownship should take an action to avoid collisions. The ownship agent only has access to the information of the front intruders, but there might be other intruders behind the ownship. \n" 
+            f"Your task is to help the ownship aircraft avoid collisions with front intruder aircraft by suggesting appropriate speed adjustments. \n"
+            f"The ownship cannot unnecessarily decelerate since it might occlude the airspace for other agents behind it. \n"
+            f"Your response should start with 'The recommended action is: ' followed by one of the actions: Decelerate, Hold, or Accelerate.\n"
+        )
+            
+            # Now, given the ownship state: [v, v_min, v_max delta_d1, delta_d2, delta_dwpt1, delta_dwpt2, delta_v1, delta_v2, same_route1, same_route2],
+            # v: ownship speed(m/s). The value can be either (low, medium, or high) 
+            # is_v_zero: whether the ownship speed is zero (yes, no).
+            # v_min: ownship minimum speed(m/s), 
+            # v_max: ownship maximum speed(m/s),
+            # d1: the absolute distance between the first front intruder (if any) and ownship(m), 
+            # d2: the absolute distance between the second front intruder (if any) and ownship(m), 
+            # delta_dwpt1: the absolute difference between the distance to the next waypoint between the first front intruder (if any) and ownship(m), 
+            # delta_dwpt2: the absolute difference between the distance to the next waypoint between the second front intruder (if any) and ownship(m), 
+            # delta_v1: signed speed difference between the first front intruder and ownship(m/s), 
+            # delta_v2: signed speed difference between the second front intruder and ownship(m/s), 
+            # same_route1: whether the first front intruder is on the same route as the ownship (1: yes, 0: no), 
+            # same_route2: whether the second front intruder is on the same route as the ownship (1: yes, 0: no). 
+            # If one of the values is None, it means there is no such front intruder.
+            # Based on the above information, decide the ownship action: Decelerate / Hold / Accelerate. 
+            # Never include reasoning, explanations, or any text other than the single chosen action.
+            # """
+        
+        ownship_spd = ownship_info['speed(m/s)']
+        ownship_min_spd = ownship_info['ac_min_spd(m/s)']
+        ownship_max_spd = ownship_info['ac_max_spd(m/s)']
+        d1 = ownship_info['distance_to_intruder1(m)'] if ownship_info['num_intruders_ahead'] >= 1 else None
+        d2 = ownship_info['distance_to_intruder2(m)'] if ownship_info['num_intruders_ahead'] >= 2 else None
+        o_wpt = ownship_info['ac_dist_to_nxt_wpt(m)']
+        dwpt1 = first_intruder_info['ac_dist_to_nxt_wpt(m)'] if ownship_info['num_intruders_ahead'] >= 1 else None
+        dwpt2 = second_intruder_info['ac_dist_to_nxt_wpt(m)'] if ownship_info['num_intruders_ahead'] >= 2 else None
+        delta_dwpt1 = abs(first_intruder_info['ac_dist_to_nxt_wpt(m)'] - ownship_info['ac_dist_to_nxt_wpt(m)']) if ownship_info['num_intruders_ahead'] >= 1 else None
+        delta_dwpt2 = abs(second_intruder_info['ac_dist_to_nxt_wpt(m)'] - ownship_info['ac_dist_to_nxt_wpt(m)']) if ownship_info['num_intruders_ahead'] >= 2 else None
+        delta_v1 = first_intruder_info['speed(m/s)'] - ownship_spd if ownship_info['num_intruders_ahead'] >= 1 else None
+        delta_v2 = second_intruder_info['speed(m/s)'] - ownship_spd if ownship_info['num_intruders_ahead'] >= 2 else None
+        same_route1 = ownship_info['intruder1_on_same_route'] if ownship_info['num_intruders_ahead'] >= 1 else None
+        same_route2 = ownship_info['intruder2_on_same_route'] if ownship_info['num_intruders_ahead'] >= 2 else None
+
+        def intruder_presence(num_intruders):
+            if num_intruders == 0:
+                return 'no'
+            elif num_intruders == 1:
+                return 'one'
+            else:
+                return 'two'
+            
+        user_prompt = (
+            f"Given the information of the ownship and intruders as follows: \n"
+            f"- Ownship: \n"
+            f"  - Speed is {speed_indicator(ownship_spd, ownship_max_spd)}. \n"
+            f"  - Speed is {desired_speed_indicator(ownship_spd, ownship_max_spd)} than the desired speed. \n"
+            f"  - Speed is{' ' if ownship_spd == 0 else ' not '}minimum and is{' ' if ownship_spd >= 0.9 * ownship_max_spd else ' not '}maximum.\n"
+            # f"- The ownship speed is{' ' if ownship_spd >= 0.9 * ownship_max_spd else ' not '}maximum. \n"
+            f"  - Distance to the next waypoint is {wypoint_distance_indicator(o_wpt)}.   \n"
+            f"  - There are {intruder_presence(ownship_info['num_intruders_ahead'])} intruders ahead. \n"
+        )
+
+        if ownship_info['num_intruders_ahead'] >= 1:
+            user_prompt += (
+                f"- Front Intruder 1: \n"
+                f"  - The euclidean distance to the ownship is {distance_indicator(d1)}. \n"
+                f"  - The intruder is{' ' if same_route1 else ' not '}on the same route as the ownship. \n"
+                f"  - The intruder distance to the next waypoint is {wypoint_distance_indicator(dwpt1)}. \n"
+                f"  - The intruder distance to the next waypoint is {delta_waypoint_distance_indicator(delta_dwpt1)} than the ownship. \n"
+                # f"  - The intruder speed is {first_intruder_info['speed(m/s)']} m/s. \n"
+                f"  - The intruder is moving at a {delta_speed_indicator(delta_v1, ownship_max_spd)} speed compared to the ownship. \n"
+            )    
+
+        if ownship_info['num_intruders_ahead'] >= 2:
+            user_prompt += (
+                f"- Front Intruder 2: \n"
+                f"  - The euclidean distance to the ownship is {distance_indicator(d2)}. \n"
+                f"  - The intruder is{' ' if same_route2 else ' not '}on the same route as the ownship. \n"
+                f"  - The intruder distance to the next waypoint is {wypoint_distance_indicator(dwpt2)}. \n"
+                f"  - The intruder distance to the next waypoint is {delta_waypoint_distance_indicator(delta_dwpt2)} than the ownship. \n"
+                # f"  - The intruder speed is {second_intruder_info['speed(m/s)']} m/s. \n"
+                f"  - The intruder is moving at a {delta_speed_indicator(delta_v2, ownship_max_spd)} speed compared to the ownship. \n"
+            )
+
+        if ownship_info['num_intruders_ahead'] == 0:
+            user_prompt += "Since there are no front intruders detected, make your decision based on the current speed and desired speed.\n"
+        
+        user_prompt += f"Based on the above information, what actions should the ownship take? (Decelerate/Hold/Accelerate) \n"
+        user_prompt += f"Your response should start with 'The recommended action is: ' followed by one of the actions: Decelerate, Hold, or Accelerate.\n"
+
+        prompt_response = f"The recommended action is: {ownship_action} \n"
+
+        return system_prompt, user_prompt
+    
+    def get_ownship_prompt(self, ownship_intruder_info):
+        """
+        Returns a formatted string prompt for the ownship information.
+        """
+        ownship_info = ownship_intruder_info['ownship_info']
+        first_intruder_info = ownship_intruder_info['first_closest_front_intruder_info']
+        second_intruder_info = ownship_intruder_info['second_closest_front_intruder_info']
+        ownship_action = ownship_intruder_info['ownship_action'] 
+
+        # system_prompt = """You are an airspace tactical deconfliction assistant. At each time step, an ownship agent is approaching a bottleneck waypoint, such as merging or intersections points, where other agents (intruders) are approaching as well. 
+        #     Based on the information of the ownship and intruders, the ownship should take an action to avoid collisions. The ownship agent only has access to the information of the front intruders, 
+        #     but there might be other intruders behind the ownship. Your task is to help the ownship aircraft avoid collisions with front intruder aircraft by 
+        #     suggesting appropriate speed adjustments. The ownship cannot unnecessarily decelerate since it might occlude the airspace for other agents behind it.
+        #     """
+        system_prompt = (
+            f"You are an airspace tactical deconfliction assistant. At each time step, an ownship agent is approaching a bottleneck waypoint, such as merging or intersections points, where other agents (intruders) are approaching as well.\n"
+            f"Based on the information of the ownship and intruders, the ownship should take an action to avoid collisions. The ownship agent only has access to the information of the front intruders, but there might be other intruders behind the ownship. \n" 
+            f"Your task is to help the ownship aircraft avoid collisions with front intruder aircraft by suggesting appropriate speed adjustments. \n"
+            f"The ownship cannot unnecessarily decelerate since it might occlude the airspace for other agents behind it. \n"
+            f"Your response should start with 'The recommended action is: ' followed by one of the actions: Decelerate, Hold, or Accelerate.\n"
+        )
+            
+            # Now, given the ownship state: [v, v_min, v_max delta_d1, delta_d2, delta_dwpt1, delta_dwpt2, delta_v1, delta_v2, same_route1, same_route2],
+            # v: ownship speed(m/s). The value can be either (low, medium, or high) 
+            # is_v_zero: whether the ownship speed is zero (yes, no).
+            # v_min: ownship minimum speed(m/s), 
+            # v_max: ownship maximum speed(m/s),
+            # d1: the absolute distance between the first front intruder (if any) and ownship(m), 
+            # d2: the absolute distance between the second front intruder (if any) and ownship(m), 
+            # delta_dwpt1: the absolute difference between the distance to the next waypoint between the first front intruder (if any) and ownship(m), 
+            # delta_dwpt2: the absolute difference between the distance to the next waypoint between the second front intruder (if any) and ownship(m), 
+            # delta_v1: signed speed difference between the first front intruder and ownship(m/s), 
+            # delta_v2: signed speed difference between the second front intruder and ownship(m/s), 
+            # same_route1: whether the first front intruder is on the same route as the ownship (1: yes, 0: no), 
+            # same_route2: whether the second front intruder is on the same route as the ownship (1: yes, 0: no). 
+            # If one of the values is None, it means there is no such front intruder.
+            # Based on the above information, decide the ownship action: Decelerate / Hold / Accelerate. 
+            # Never include reasoning, explanations, or any text other than the single chosen action.
+            # """
+        
+        ownship_spd = ownship_info['speed(m/s)']
+        ownship_min_spd = ownship_info['ac_min_spd(m/s)']
+        ownship_max_spd = ownship_info['ac_max_spd(m/s)']
+        d1 = ownship_info['distance_to_intruder1(m)'] if ownship_info['num_intruders_ahead'] >= 1 else None
+        d2 = ownship_info['distance_to_intruder2(m)'] if ownship_info['num_intruders_ahead'] >= 2 else None
+        o_wpt = ownship_info['ac_dist_to_nxt_wpt(m)']
+        dwpt1 = first_intruder_info['ac_dist_to_nxt_wpt(m)'] if ownship_info['num_intruders_ahead'] >= 1 else None
+        dwpt2 = second_intruder_info['ac_dist_to_nxt_wpt(m)'] if ownship_info['num_intruders_ahead'] >= 2 else None
+        delta_dwpt1 = abs(first_intruder_info['ac_dist_to_nxt_wpt(m)'] - ownship_info['ac_dist_to_nxt_wpt(m)']) if ownship_info['num_intruders_ahead'] >= 1 else None
+        delta_dwpt2 = abs(second_intruder_info['ac_dist_to_nxt_wpt(m)'] - ownship_info['ac_dist_to_nxt_wpt(m)']) if ownship_info['num_intruders_ahead'] >= 2 else None
+        delta_v1 = first_intruder_info['speed(m/s)'] - ownship_spd if ownship_info['num_intruders_ahead'] >= 1 else None
+        delta_v2 = second_intruder_info['speed(m/s)'] - ownship_spd if ownship_info['num_intruders_ahead'] >= 2 else None
+        same_route1 = ownship_info['intruder1_on_same_route'] if ownship_info['num_intruders_ahead'] >= 1 else None
+        same_route2 = ownship_info['intruder2_on_same_route'] if ownship_info['num_intruders_ahead'] >= 2 else None
+
+        def intruder_presence(num_intruders):
+            if num_intruders == 0:
+                return 'no'
+            elif num_intruders == 1:
+                return 'one'
+            else:
+                return 'two'
+            
+        user_prompt = (
+            f"Given the information of the ownship and intruders as follows: \n"
+            f"- Ownship: \n"
+            f"  - Speed is {speed_indicator(ownship_spd, ownship_max_spd)} ({ownship_spd} m/s), where minimum possible speed is {ownship_min_spd} m/s  and maximum possible speed is {ownship_max_spd} m/s. \n"
+            f"  - Speed is {desired_speed_indicator(ownship_spd, ownship_max_spd)} than the desired speed. \n"
+            f"  - Speed is{' ' if ownship_spd == 0 else ' not '}minimum and is{' ' if ownship_spd >= 0.9 * ownship_max_spd else ' not '}maximum.\n"
+            # f"- The ownship speed is{' ' if ownship_spd >= 0.9 * ownship_max_spd else ' not '}maximum. \n"
+            f"  - Distance to the next waypoint is {wypoint_distance_indicator(o_wpt)} ({o_wpt} m).   \n"
+            f"  - There are {intruder_presence(ownship_info['num_intruders_ahead'])} intruders ahead. \n"
+        )
+
+        if ownship_info['num_intruders_ahead'] >= 1:
+            user_prompt += (
+                f"- Front Intruder 1: \n"
+                f"  - The euclidean distance to the ownship is {distance_indicator(d1)} ({d1} m). \n"
+                f"  - The intruder is{' ' if same_route1 else ' not '}on the same route as the ownship. \n"
+                f"  - The intruder distance to the next waypoint is {wypoint_distance_indicator(dwpt1)} ({dwpt1} m). \n"
+                f"  - The intruder distance to the next waypoint is {delta_waypoint_distance_indicator(delta_dwpt1)} than the ownship. \n"
+                f"  - The intruder speed is {first_intruder_info['speed(m/s)']} m/s. \n"
+                f"  - The intruder is moving at a {delta_speed_indicator(delta_v1, ownship_max_spd)} speed compared to the ownship. \n"
+            )    
+
+        if ownship_info['num_intruders_ahead'] >= 2:
+            user_prompt += (
+                f"- Front Intruder 2: \n"
+                f"  - The euclidean distance to the ownship is {distance_indicator(d2)} ({d2} m). \n"
+                f"  - The intruder is{' ' if same_route2 else ' not '}on the same route as the ownship. \n"
+                f"  - The intruder distance to the next waypoint is {wypoint_distance_indicator(dwpt2)} ({dwpt2} m). \n"
+                f"  - The intruder distance to the next waypoint is {delta_waypoint_distance_indicator(delta_dwpt2)} than the ownship. \n"
+                f"  - The intruder speed is {second_intruder_info['speed(m/s)']} m/s. \n"
+                f"  - The intruder is moving at a {delta_speed_indicator(delta_v2, ownship_max_spd)} speed compared to the ownship. \n"
+            )
+
+        if ownship_info['num_intruders_ahead'] == 0:
+            user_prompt += "Since there are no front intruders detected, make your decision based on the current speed and desired speed.\n"
+        
+        user_prompt += f"Based on the above information, what actions should the ownship take? (Decelerate/Hold/Accelerate) \n"
+        user_prompt += f"Your response should start with 'The recommended action is: ' followed by one of the actions: Decelerate, Hold, or Accelerate.\n"
+
+        prompt_response = f"The recommended action is: {ownship_action} \n"
+
         return system_prompt, user_prompt
     
     def get_llm_response(self, system_prompt, user_prompt):
@@ -2765,7 +3063,7 @@ class MATCEnv(ParallelEnv):
             verbose=False
         )
 
-        print("LLM Batch Results:", batch_results)
+        # print("LLM Batch Results:", batch_results)
 
         for i, agent in enumerate(agents):
             llm_action = self.translate_action(batch_results["actions"][i])

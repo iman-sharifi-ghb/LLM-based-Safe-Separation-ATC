@@ -42,4 +42,4 @@ wandb/
 
 *.scn
 
-__pycache__/
+bucket.npy
