@@ -1,6 +1,6 @@
 import wandb
 import numpy as np
-from envs import my_matc_env_rb_strong
+from envs import my_matc_env_rb_strong_iman
 # from PPO_attention import PPO_Agent
 # from PPO_attention import Memory
 # from PPO_attention import compute_gae, discount
@@ -22,7 +22,7 @@ import json
 
 warnings.filterwarnings("ignore", category=UserWarning, message=".*?.*?")
 
-MAX_NUM_AGENTS = 20
+MAX_NUM_AGENTS = 30
 NUM_INTRUDERS = 3
 NUM_EPISODES = 1
 
@@ -37,7 +37,7 @@ if __name__ == '__main__':
     WANDB = False
     RENDER_MODE = 'sim' 
 
-    DATE = 'Nov6' # args.date
+    DATE = 'Dec14' # args.date
     # Model name
     MODEL_NAME_COMPANY1 = f'best_policy_CoA_{DATE}.pt'
     MODEL_NAME_COMPANY2 = f'best_policy_CoB_{DATE}.pt'
@@ -46,9 +46,9 @@ if __name__ == '__main__':
     MAX_STEPS_SO_FAR = 20000
 
     # Set the random seed for reproducibility
-    # torch.manual_seed(42)
-    # np.random.seed(42)
-    # random.seed(42)
+    torch.manual_seed(42)
+    np.random.seed(42)
+    random.seed(42)
     # set the random for mps 
     # if torch.backends.mps.is_available():
     #     torch.manual_seed(42)
@@ -59,15 +59,16 @@ if __name__ == '__main__':
     numEpisodes = NUM_EPISODES
 
     # Initializing the environment
-    flight_route_file = 'routes/matc/auto_airspace_config.json'
-    aircraft_config_file = 'routes/matc/aircraft_configurations_auto.json'
-    env = my_matc_env_rb_strong.MATCEnv(flight_route_file, aircraft_config_file, render_mode=RENDER_MODE)
+    flight_route_file = 'routes/matc/auto_airspace_config4.json'
+    aircraft_config_file = 'routes/matc/aircraft_configurations_auto4.json'
+
+    env = my_matc_env_rb_strong_iman.MATCEnv(flight_route_file, aircraft_config_file, render_mode=RENDER_MODE)
 
     # Company list
     companylist = ['CoA', 'CoB']
 
     # Initialize Dataset
-    dataframe_name = 'dataset'+DATE+'.csv'
+    dataframe_name = 'bluesky_test_grpo_config4'+DATE+'.csv'
     mydataframe = {
                 "N_success": [],
                 "Collisions": [],
@@ -79,6 +80,10 @@ if __name__ == '__main__':
                 "Avg Velocity Rewards": [],
                 "Actions": [],
                 "Avg Speed": [],
+                "elapsed_time": [],
+                "max_agent_counter": [],
+                "max_agent_time": [],
+                "avg_llm_agent_time": [],
             } 
 
     # Training loop
@@ -95,12 +100,15 @@ if __name__ == '__main__':
         counter = 0
 
         # print(f"Beta: {beta}")
+        llm_agents = ['AA0002', 'AA0003', 'AB0002', 'AB0003', 'AC0002', 'AC0003', 'AD0002', 'AD0003']
+        llm_agents_steps = {agent: 0 for agent in llm_agents}
+
         END_EPISODE = False
         while not END_EPISODE: 
 
             Actions, Reasons = env.get_rb_actions(observations)
 
-            llm_agents = ['AA0003', 'AA0004', 'AB0003', 'AC0002', "AD0003"]
+            llm_agents = ['AA0002', 'AA0003', 'AB0002', 'AB0003', 'AC0002', 'AC0003', 'AD0002', 'AD0003']
             for agent in llm_agents.copy():
                 if agent not in Actions.keys():
                     llm_agents.remove(agent)
@@ -110,7 +118,8 @@ if __name__ == '__main__':
             # update Actions with llm_Actions
             for agent in llm_agents:
                 Actions[agent] = llm_Actions[agent]
-                print(f"LLM Action for {agent}: {llm_Actions[agent]}")
+                llm_agents_steps[agent] += 1
+                # print(f"LLM Action for {agent}: {llm_Actions[agent]}")
 
             # Step the environment
             if Actions != {}:
@@ -129,6 +138,7 @@ if __name__ == '__main__':
             # Increment the counter
             counter += 1
             print(counter, end='\r')
+            print(llm_agents_steps, end='\r')
 
             # pause simulation for a short while to let the server breathe
             if RENDER_MODE == 'server':
@@ -255,12 +265,17 @@ if __name__ == '__main__':
 
         # Print the formatted results
         # print(f"\nEpisode {episode}>> Collisions: {num_of_collisions}, Avg Rewards: {avg_rewards_formatted}, Avg Subrewards: {avg_subrewards_formatted}, Sum Subrewards: {sum_subrewards_formatted}, Avg Loss: {avg_loss}, Elapsed Time: {elapsed_time:.2f}, LR: {ppo_agent.new_lr:.5f}, Beta: {beta:.4f}, Training Steps: {training_steps}.")
+        max_agent_time = float(max_agent_counter*env.dt/60)
+        avg_llm_agent_time = float(np.mean(list(llm_agents_steps.values()))*env.dt/60)
         print(f"\nEpisode {episode}>> N_success: {N_success}, "
                 f"Collisions: {num_of_collisions}, "
                 f"Avg Rewards Co. A: {avg_rewards_all_agents_CoA:.4f}, "
                 f"Avg Rewards Co. B: {avg_rewards_all_agents_CoB:.4f}, "
                 f"Elapsed Time: {elapsed_time:.2f}, "
-                f"Max agent time: {float(max_agent_counter*env.dt/60):.2f} (min).")
+                f"Max agent time: {max_agent_time:.2f} (min),"
+                f"Max agent counter: {max_agent_counter},"
+                f"Avg LLM agent time: {avg_llm_agent_time:.2f} (min),"
+        )
         # print(f"Average Actions: {avg_episode_actions_formatted}.")
 
         # print(f"Episode Counter:{counter}, Collided Agents: {collided_agents_info}, Average Actions: {avg_episode_actions_formatted}.")
@@ -299,25 +314,29 @@ if __name__ == '__main__':
         mydataframe['Actions'].append([[env.action_counter_A['decelerate'], env.action_counter_A['hold'], env.action_counter_A['accelerate']],
                                         [env.action_counter_B['decelerate'], env.action_counter_B['hold'], env.action_counter_B['accelerate']]])
         mydataframe['Avg Speed'].append([avg_spd_CoA, avg_spd_CoB])
-        # Save the dataset to a CSV file after each 10 episodes
-        if (episode+1) % 10 == 0:
-            df = pd.DataFrame(mydataframe)
-            df.to_csv(dataframe_name, index=False)
+        mydataframe['elapsed_time'].append(elapsed_time)
+        mydataframe['max_agent_time'].append(max_agent_time)
+        mydataframe['max_agent_counter'].append(max_agent_counter)
+        mydataframe['avg_llm_agent_time'].append(avg_llm_agent_time)
+        # Save the dataset to a CSV file after each 5 episodes
+        # if (episode+1) % 1 == 0:
+        df = pd.DataFrame(mydataframe)
+        df.to_csv(dataframe_name, index=False)
 
     # Save dataset at the end of training
-    if len(env.all_state_action_pairs) > 0:
-        # whether the file exists. if yes append to it else create a new one and write to it
-        file_exists = os.path.isfile("raw_ownship_intruders_data_"+DATE+".jsonl")
-        if file_exists:
-            print("Appending to existing dataset file.")
-            mode = "a"
-        else:
-            print("Creating new dataset file.")
-            mode = "w"
-        with open("raw_ownship_intruders_data_"+DATE+".jsonl", mode) as f:
-            for record in env.all_state_action_pairs:
-                f.write(json.dumps(record) + "\n")
+    # if len(env.all_state_action_pairs) > 0:
+    #     # whether the file exists. if yes append to it else create a new one and write to it
+    #     file_exists = os.path.isfile("raw_ownship_intruders_data_"+DATE+".jsonl")
+    #     if file_exists:
+    #         print("Appending to existing dataset file.")
+    #         mode = "a"
+    #     else:
+    #         print("Creating new dataset file.")
+    #         mode = "w"
+    #     with open("raw_ownship_intruders_data_"+DATE+".jsonl", mode) as f:
+    #         for record in env.all_state_action_pairs:
+    #             f.write(json.dumps(record) + "\n")
             
     # Finish wandb run
-    if WANDB:
-        wandb.finish()
+    # if WANDB:
+    #     wandb.finish()

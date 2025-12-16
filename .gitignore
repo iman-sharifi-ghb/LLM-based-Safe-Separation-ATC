@@ -19,3 +19,17 @@ LLM_models/
 lora-qwen-atc/
 download_base_llm.py
 finetuned_models/
+lora-qwen-*/
+models/
+Copy of *
+data_balanced_finetuning_llm.py
+dataset_filtering_patch.py
+eval_llm.ipynb
+finetuning_llm.py
+flashattention_tuto.ipynb
+grpo_qwen_atc.py 
+merging_lora_to_model.py
+prompt_generator_original.ipynb
+prompt_generator.ipynb
+qwen_llm.py
+tests_llm/

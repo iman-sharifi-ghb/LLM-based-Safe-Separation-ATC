@@ -1,0 +1,611 @@
+{
+  "meta": {
+    "description": "Generated airspace configuration with fixed merge/intersection points.",
+    "center": [
+      33.163513333333334,
+      -96.86969333333333
+    ],
+    "radius_nm": 50.0
+  },
+  "waypoints": [
+    {
+      "name": "WP1",
+      "latitude": 33.12016,
+      "longitude": -96.9354,
+      "type": "regular"
+    },
+    {
+      "name": "WP2",
+      "latitude": 33.10197,
+      "longitude": -96.87325,
+      "type": "regular"
+    },
+    {
+      "name": "WP3",
+      "latitude": 33.141200018868716,
+      "longitude": -96.9037649079815
+    },
+    {
+      "name": "WP4",
+      "latitude": 33.21684,
+      "longitude": -96.85412,
+      "type": "regular"
+    },
+    {
+      "name": "WP5",
+      "latitude": 33.11956,
+      "longitude": -96.80004,
+      "type": "regular"
+    },
+    {
+      "name": "WP6",
+      "latitude": 33.17033,
+      "longitude": -96.78258,
+      "type": "regular"
+    },
+    {
+      "name": "WP7",
+      "latitude": 33.157413854196214,
+      "longitude": -96.82586605530891
+    },
+    {
+      "name": "WP8",
+      "latitude": 33.19516,
+      "longitude": -96.91322,
+      "type": "regular"
+    },
+    {
+      "name": "WP9",
+      "latitude": 33.1919137679323,
+      "longitude": -96.87945265617446
+    },
+    {
+      "name": "WP10",
+      "latitude": 33.10119,
+      "longitude": -96.90595,
+      "type": "regular"
+    }
+  ],
+  "routes": [
+    {
+      "flight_prefix": [
+        "AA"
+      ],
+      "aircraft": [
+        "Amzn"
+      ],
+      "aircraft_color": [
+        "CYAN"
+      ],
+      "distribution": [
+        {
+          "name": "Monday",
+          "spawn": {
+            "type": "rv_discrete",
+            "parameters": {
+              "values": [
+                [
+                  5
+                ],
+                [
+                  1
+                ]
+              ]
+            }
+          },
+          "spacing": {
+            "type": "rv_discrete",
+            "parameters": {
+              "values": [
+                [
+                  40,
+                  45,
+                  50,
+                  55,
+                  60,
+                  65,
+                  70,
+                  75,
+                  80,
+                  85
+                ],
+                [
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1
+                ]
+              ]
+            }
+          },
+          "direction_forward_probability": 1,
+          "flight_prefix_probabilities": [
+            1
+          ],
+          "aircraft_probabilities": [
+            1
+          ],
+          "path_probabilities": [
+            "1"
+          ]
+        }
+      ],
+      "end_waypoint_1": {
+        "name": "WP4",
+        "speed": 25,
+        "end": false
+      },
+      "end_waypoint_2": {
+        "name": "WP1",
+        "speed": 25,
+        "end": false
+      },
+      "possible_paths": [
+        [
+          {
+            "name": "WP1",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP3",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP9",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP4",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          }
+        ]
+      ]
+    },
+    {
+      "flight_prefix": [
+        "AB"
+      ],
+      "aircraft": [
+        "Xwing"
+      ],
+      "aircraft_color": [
+        "MAGENTA"
+      ],
+      "distribution": [
+        {
+          "name": "Monday",
+          "spawn": {
+            "type": "rv_discrete",
+            "parameters": {
+              "values": [
+                [
+                  5
+                ],
+                [
+                  1
+                ]
+              ]
+            }
+          },
+          "spacing": {
+            "type": "rv_discrete",
+            "parameters": {
+              "values": [
+                [
+                  40,
+                  45,
+                  50,
+                  55,
+                  60,
+                  65,
+                  70,
+                  75,
+                  80,
+                  85
+                ],
+                [
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1
+                ]
+              ]
+            }
+          },
+          "direction_forward_probability": 1,
+          "flight_prefix_probabilities": [
+            1
+          ],
+          "aircraft_probabilities": [
+            1
+          ],
+          "path_probabilities": [
+            "1"
+          ]
+        }
+      ],
+      "end_waypoint_1": {
+        "name": "WP4",
+        "speed": 25,
+        "end": false
+      },
+      "end_waypoint_2": {
+        "name": "WP2",
+        "speed": 25,
+        "end": false
+      },
+      "possible_paths": [
+        [
+          {
+            "name": "WP2",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP3",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP9",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP4",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          }
+        ]
+      ]
+    },
+    {
+      "flight_prefix": [
+        "AC"
+      ],
+      "aircraft": [
+        "Xwing"
+      ],
+      "aircraft_color": [
+        "MAGENTA"
+      ],
+      "distribution": [
+        {
+          "name": "Monday",
+          "spawn": {
+            "type": "rv_discrete",
+            "parameters": {
+              "values": [
+                [
+                  5
+                ],
+                [
+                  1
+                ]
+              ]
+            }
+          },
+          "spacing": {
+            "type": "rv_discrete",
+            "parameters": {
+              "values": [
+                [
+                  40,
+                  45,
+                  50,
+                  55,
+                  60,
+                  65,
+                  70,
+                  75,
+                  80,
+                  85
+                ],
+                [
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1
+                ]
+              ]
+            }
+          },
+          "direction_forward_probability": 1,
+          "flight_prefix_probabilities": [
+            1
+          ],
+          "aircraft_probabilities": [
+            1
+          ],
+          "path_probabilities": [
+            "1"
+          ]
+        }
+      ],
+      "end_waypoint_1": {
+        "name": "WP8",
+        "speed": 25,
+        "end": false
+      },
+      "end_waypoint_2": {
+        "name": "WP5",
+        "speed": 25,
+        "end": false
+      },
+      "possible_paths": [
+        [
+          {
+            "name": "WP5",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP7",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP9",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP8",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          }
+        ]
+      ]
+    },
+    {
+      "flight_prefix": [
+        "AD"
+      ],
+      "aircraft": [
+        "Amzn"
+      ],
+      "aircraft_color": [
+        "CYAN"
+      ],
+      "distribution": [
+        {
+          "name": "Monday",
+          "spawn": {
+            "type": "rv_discrete",
+            "parameters": {
+              "values": [
+                [
+                  5
+                ],
+                [
+                  1
+                ]
+              ]
+            }
+          },
+          "spacing": {
+            "type": "rv_discrete",
+            "parameters": {
+              "values": [
+                [
+                  40,
+                  45,
+                  50,
+                  55,
+                  60,
+                  65,
+                  70,
+                  75,
+                  80,
+                  85
+                ],
+                [
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1
+                ]
+              ]
+            }
+          },
+          "direction_forward_probability": 1,
+          "flight_prefix_probabilities": [
+            1
+          ],
+          "aircraft_probabilities": [
+            1
+          ],
+          "path_probabilities": [
+            "1"
+          ]
+        }
+      ],
+      "end_waypoint_1": {
+        "name": "WP8",
+        "speed": 25,
+        "end": false
+      },
+      "end_waypoint_2": {
+        "name": "WP6",
+        "speed": 25,
+        "end": false
+      },
+      "possible_paths": [
+        [
+          {
+            "name": "WP6",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP7",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP9",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP8",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          }
+        ]
+      ]
+    },
+    {
+      "flight_prefix": [
+        "AE"
+      ],
+      "aircraft": [
+        "Amzn"
+      ],
+      "aircraft_color": [
+        "CYAN"
+      ],
+      "distribution": [
+        {
+          "name": "Monday",
+          "spawn": {
+            "type": "rv_discrete",
+            "parameters": {
+              "values": [
+                [
+                  5
+                ],
+                [
+                  1
+                ]
+              ]
+            }
+          },
+          "spacing": {
+            "type": "rv_discrete",
+            "parameters": {
+              "values": [
+                [
+                  40,
+                  45,
+                  50,
+                  55,
+                  60,
+                  65,
+                  70,
+                  75,
+                  80,
+                  85
+                ],
+                [
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1,
+                  0.1
+                ]
+              ]
+            }
+          },
+          "direction_forward_probability": 1,
+          "flight_prefix_probabilities": [
+            1
+          ],
+          "aircraft_probabilities": [
+            1
+          ],
+          "path_probabilities": [
+            "1"
+          ]
+        }
+      ],
+      "end_waypoint_1": {
+        "name": "WP4",
+        "speed": 25,
+        "end": false
+      },
+      "end_waypoint_2": {
+        "name": "WP10",
+        "speed": 25,
+        "end": false
+      },
+      "possible_paths": [
+        [
+          {
+            "name": "WP10",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP3",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP9",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          },
+          {
+            "name": "WP4",
+            "speed": 25,
+            "altitude": "FL150",
+            "end": false
+          }
+        ]
+      ]
+    }
+  ]
+}

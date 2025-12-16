@@ -1,0 +1,10 @@
+              precision    recall  f1-score   support
+
+  Accelerate       1.00      0.12      0.21      1000
+  Decelerate       1.00      0.28      0.44      1000
+        Hold       1.00      0.41      0.58      1000
+     Unknown       0.00      0.00      0.00         0
+
+    accuracy                           0.27      3000
+   macro avg       0.75      0.20      0.31      3000
+weighted avg       1.00      0.27      0.41      3000

@@ -5,17 +5,21 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments,
 from datasets import load_dataset
 from peft import LoraConfig, TaskType, get_peft_model, prepare_model_for_kbit_training
 
-#### 1. Load the dataset
-dataset = load_dataset("json", data_files="ownship_prompts_data.jsonl")
 
-dataset = dataset["train"].train_test_split(test_size=0.2, seed=42, shuffle=True, keep_in_memory=False)
+#### 1. Load the dataset
+filtered_data_file = "filteredBalanced_ownship_prompts_data_Nov10.jsonl"
+dataset = load_dataset("json", data_files=filtered_data_file)
+
+dataset = dataset["train"].train_test_split(test_size=0.1, seed=42, shuffle=True, keep_in_memory=False)
 
 #### 2. Load the model and tokenizer
-MODEL_ID = "Qwen/Qwen2.5-Math-7B"
-SHARED_MODEL_DIR = "/data/shared_LLM_models/Qwen2.5-Math-7B"
+
+SHARED_MODEL_DIR = "/data/Iman/shared_LLM_models/Qwen2.5-Math-7B"
 os.makedirs(SHARED_MODEL_DIR, exist_ok=True)
 
 tokenizer = AutoTokenizer.from_pretrained(SHARED_MODEL_DIR, trust_remote_code=True)
+tokenizer.padding_side = "left"  # Set left padding for decoder-only models
+
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
 
@@ -99,9 +103,9 @@ training_args = TrainingArguments(
     learning_rate=2e-4,
     fp16=True,
     logging_steps=10,
-    save_strategy="epoch",
-    eval_strategy="steps",
-    eval_steps=1000,
+    # save_strategy="epoch",
+    # eval_strategy="steps",
+    # eval_steps=5000,
     label_names=["labels"],
 )
 
@@ -116,6 +120,6 @@ trainer = Trainer(
 trainer.train()
 
 #### 5. Save the fine-tuned model
-trainer.save_model("./finetuned_models/lora-qwen-atc-finetuned2")
+trainer.save_model("./finetuned_models/lora-qwen-filteredBalanced-atc-finetuned")
 #### save only the LoRA adapters
-model.save_pretrained("./finetuned_models/lora-qwen-atc-finetuned-lora-adapters")
+model.save_pretrained("./finetuned_models/lora-qwen-filteredBalanced-atc-finetuned-lora-adapters")

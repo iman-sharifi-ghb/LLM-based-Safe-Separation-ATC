@@ -29,7 +29,7 @@ class QwenInferenceEngine:
         elif model_path is not None:
             # Load from path
             print(f"🚀 Loading model from: {model_path}")
-            self.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, padding_side="left")
+            self.tokenizer = AutoTokenizer.from_pretrained(model_path, padding_side="left", trust_remote_code=True)
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_path,
                 device_map="auto",
@@ -43,7 +43,7 @@ class QwenInferenceEngine:
         
         # Set generation parameters
         self.generation_kwargs = {
-            "max_new_tokens": 64,
+            "max_new_tokens": 20,
             "do_sample": False,
             "temperature": 0.0,
             "eos_token_id": self.tokenizer.eos_token_id,
@@ -64,11 +64,16 @@ class QwenInferenceEngine:
             str: Extracted action (Accelerate, Decelerate, or Hold)
         """
         match = re.search(r"\b(Accelerate|Decelerate|Hold)\b", text_output, flags=re.IGNORECASE)
-        return match.group(1).capitalize() if match else "Hold"
+        if match:
+            action = match.group(1).capitalize()
+        else:   
+            action = "Hold"
+            print("⚠️ No valid action found in output; defaulting to 'Hold'")
+        return action
     
     def format_prompt(self, system_prompt, user_prompt):
         return (f"### System:\n{system_prompt.strip()}\n\n"
-                f"### User:\n{user_prompt.strip()}\n\n"
+                f"### User:\n{user_prompt.strip()} Always start your response with: {"The recommended action is: "}\n"
                 f"### Assistant:\n"
         )
     
@@ -155,7 +160,7 @@ class QwenInferenceEngine:
                 self.format_prompt(system_prompt, user_p) for user_p in batch_prompts
             ]
             current_batch_size = len(batched_prompt_formatted)
-            print("Batch size:" , current_batch_size)
+            # print("Batch size:" , current_batch_size)
             # Create chat-formatted prompts for Qwen
             # messages_batch = [
             #     [
@@ -192,7 +197,7 @@ class QwenInferenceEngine:
             # Generate in batch
             # self.generation_kwargs["eos_token_id"] = None
             batch_generation_kwargs = {
-            "max_new_tokens": 64,
+            "max_new_tokens": 20,
             "do_sample": False,
             "temperature": 0.0,
             "eos_token_id": self.tokenizer.eos_token_id,
@@ -215,7 +220,7 @@ class QwenInferenceEngine:
             for i, text_output in enumerate(decoded_outputs):
                 
                 assistant_response = text_output.split("### Assistant:")[-1].strip()
-                print("Raw OUT:", text_output, "||| Assistant Response:", assistant_response)
+                # print("Raw OUT:", text_output, "||| Assistant Response:", assistant_response)
                 action = self.extract_action(assistant_response)
                 all_actions.append(action)
                 all_raw_outputs.append(assistant_response)
