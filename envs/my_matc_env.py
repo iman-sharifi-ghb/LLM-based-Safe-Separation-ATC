@@ -16,7 +16,7 @@ import json
 from .scenario.utils import calculate_heading, metric_spd_to_knots_rounded
 from .scenario.scenario import ATCScenario
 from .scenario.utils import haversine_distance, normalize
-from qwen_llm_iman import QwenInferenceEngine
+from qwen_inference_engine import QwenInferenceEngine
 
 DELTA_T = 3.0
 ZOOM = 10.0
